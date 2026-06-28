@@ -1,19 +1,17 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from datetime import date
+
 from app.database import Base
 from app.models.usuario import Usuario, Profesor, Alumno, DetallesAlumno
+from app.models.evaluacion import Categoria, Pregunta, Evaluacion, RespuestaEvaluacion
 from app.services.usuario_service import UsuarioService
 from app.services.dtos import CrearProfesorDTO, CrearAlumnoDTO, DetallesAlumnoDTO
-from app.models.evaluacion import Categoria, Pregunta, Evaluacion, RespuestaEvaluacion
-from datetime import date
 
 
 @pytest.fixture
 def session():
-    from app.models.usuario import Usuario, Profesor, Alumno, DetallesAlumno
-    from app.models.evaluacion import Categoria, Pregunta, Evaluacion, RespuestaEvaluacion
-
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -25,7 +23,7 @@ def session():
 
 @pytest.fixture
 def service(session):
-    return UsuarioService(session)
+    return UsuarioService([session])
 
 
 def test_crear_profesor(service):
@@ -40,7 +38,7 @@ def test_crear_profesor(service):
 def test_crear_alumno(service):
     dto = CrearAlumnoDTO(nombre="Juan", tel="123456", fecha_nacimiento=date(2000, 1, 1))
     alumno = service.crear_alumno(dto)
-    assert alumno.id is not None
+    assert alumno.id is not None  
     assert alumno.nombre == "Juan"
     assert alumno.rol == 1
 
@@ -77,7 +75,7 @@ def test_agregar_detalles_alumno(service):
     alumno = service.crear_alumno(CrearAlumnoDTO(nombre="Juan"))
     dto = DetallesAlumnoDTO(alumno_id=alumno.id, peso=75.0, imc=22.5)
     detalles = service.agregar_detalles_alumno(dto)
-    assert detalles.id is not None
+    assert detalles.id is not None  # UUID
     assert detalles.peso == 75.0
 
 

@@ -1,22 +1,36 @@
+import uuid
 from sqlalchemy import String, Integer, Boolean, Float, Date, Text, ForeignKey, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import Uuid
 from app.database import Base
+
+# Tipo compatible con SQLite y PostgreSQL
+def uuid_pk():
+    """Primary key UUID, generado en Python (mismo valor en ambas DBs)."""
+    return mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+def uuid_fk(tabla: str):
+    """Foreign key UUID."""
+    return mapped_column(Uuid(as_uuid=True), ForeignKey(tabla), nullable=False)
+
 
 cargo_de = Table(
     "cargo_de",
     Base.metadata,
-    Column("profesor", ForeignKey("profesores.id", ondelete="RESTRICT"), primary_key=True),
-    Column("alumno", ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True),
+    Column("profesor", Uuid(as_uuid=True), ForeignKey("profesores.id", ondelete="RESTRICT"), primary_key=True),
+    Column("alumno", Uuid(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True),
 )
+
 
 class Usuario(Base):
     __tablename__ = "usuarios"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[uuid.UUID] = uuid_pk()
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     tel: Mapped[str | None] = mapped_column(String(20))
     user: Mapped[str | None] = mapped_column(String(50), unique=True)
-    rol: Mapped[int] = mapped_column(Integer, nullable=False)  # 1=alumno, 2=profesor
+    rol: Mapped[int] = mapped_column(Integer, nullable=False)
 
     __mapper_args__ = {
         "polymorphic_on": "rol",
@@ -27,7 +41,7 @@ class Usuario(Base):
 class Profesor(Usuario):
     __tablename__ = "profesores"
 
-    id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("usuarios.id"), primary_key=True)
     jefe: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     alumnos: Mapped[list["Alumno"]] = relationship(
         secondary=cargo_de,
@@ -36,19 +50,30 @@ class Profesor(Usuario):
 
     __mapper_args__ = {"polymorphic_identity": 2}
 
+class Entrenamiento(Base):
+    __tablename__ = "entrenamientos"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    alumno_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("alumnos.id"), nullable=False)
+    dia: Mapped[int] = mapped_column(Integer, nullable=False)  # 1=Lunes ... 7=Domingo
+    horario: Mapped[str] = mapped_column(String(5), nullable=False)  # "08:30"
+
+    alumno: Mapped["Alumno"] = relationship(back_populates="entrenamientos")
 
 class Alumno(Usuario):
     __tablename__ = "alumnos"
 
-    id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("usuarios.id"), primary_key=True)
     tel_emergencia: Mapped[str | None] = mapped_column(Text)
     fecha_nacimiento: Mapped[Date | None] = mapped_column(Date)
     estado: Mapped[int] = mapped_column(Integer, default=1)
     evaluaciones: Mapped[list["Evaluacion"]] = relationship(
         back_populates="alumno", cascade="all, delete-orphan"
     )
-
     detalles: Mapped[list["DetallesAlumno"]] = relationship(
+        back_populates="alumno", cascade="all, delete-orphan"
+    )
+    entrenamientos: Mapped[list["Entrenamiento"]] = relationship(
         back_populates="alumno", cascade="all, delete-orphan"
     )
 
@@ -58,8 +83,8 @@ class Alumno(Usuario):
 class DetallesAlumno(Base):
     __tablename__ = "detalles_alumno"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    alumno_id: Mapped[int] = mapped_column(ForeignKey("alumnos.id"), nullable=False)
+    id: Mapped[uuid.UUID] = uuid_pk()
+    alumno_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("alumnos.id"), nullable=False)
     peso: Mapped[float | None] = mapped_column(Float)
     imc: Mapped[float | None] = mapped_column(Float)
     grasa_corporal: Mapped[float | None] = mapped_column(Float)

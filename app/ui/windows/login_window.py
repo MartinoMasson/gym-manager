@@ -9,6 +9,7 @@ from PyQt6.QtGui import QFont, QColor, QPainter, QBrush
 from app.database import LocalSession
 from app.services.usuario_service import UsuarioService
 from app.models.usuario import Profesor
+from app.database import get_sessions
 
 COLORS = {
     'primario': '#6366f1',
@@ -165,14 +166,17 @@ class LoginWindow(QWidget):
         layout.addWidget(btn_agregar, alignment=Qt.AlignmentFlag.AlignCenter)
 
     def _cargar_profesores(self):
+        from app.database import RemoteSession
+
         # Limpiar avatares existentes
         for i in reversed(range(self.avatares_layout.count())):
             self.avatares_layout.itemAt(i).widget().deleteLater()
 
-        session = LocalSession()
-        service = UsuarioService(session)
+        local = LocalSession()
+        sessions = [local, RemoteSession()] if RemoteSession else [local]
+        service = UsuarioService(sessions)
         profesores = service.listar_profesores()
-        session.close()
+        local.close()
 
         for i, profesor in enumerate(profesores):
             color = AVATAR_COLORS[i % len(AVATAR_COLORS)]

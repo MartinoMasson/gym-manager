@@ -17,6 +17,12 @@ RemoteSession = sessionmaker(bind=remote_engine) if remote_engine else None
 class Base(DeclarativeBase):
     pass
 
+def get_sessions():
+    sessions = [LocalSession()]
+    if RemoteSession:
+        sessions.append(RemoteSession())
+    return sessions
+
 def init_db():
     from app.models import usuario,evaluacion 
     Base.metadata.create_all(bind=local_engine)

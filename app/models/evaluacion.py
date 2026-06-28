@@ -1,7 +1,14 @@
-from sqlalchemy import Integer, ForeignKey, Date, Text, String, Enum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+import uuid
 import enum
+from datetime import datetime
+from sqlalchemy import ForeignKey, Date, DateTime, Text, String, Enum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Uuid
+from app.database import Base
+
+def uuid_pk():
+    """Primary key UUID, generado en Python (mismo valor en ambas DBs)."""
+    return mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
 
 class ColorSemaforo(str, enum.Enum):
@@ -13,7 +20,7 @@ class ColorSemaforo(str, enum.Enum):
 class Categoria(Base):
     __tablename__ = "categorias"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[uuid.UUID] = uuid_pk()
     nombre: Mapped[str] = mapped_column(String(50), nullable=False)
 
     preguntas: Mapped[list["Pregunta"]] = relationship(back_populates="categoria")
@@ -22,8 +29,8 @@ class Categoria(Base):
 class Pregunta(Base):
     __tablename__ = "preguntas"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    categoria_id: Mapped[int] = mapped_column(ForeignKey("categorias.id"))
+    id: Mapped[uuid.UUID] = uuid_pk()
+    categoria_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("categorias.id"))
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     tipo: Mapped[str] = mapped_column(String(10), nullable=False)  # 'radio' o 'text'
 
@@ -33,13 +40,14 @@ class Pregunta(Base):
 class Evaluacion(Base):
     __tablename__ = "evaluaciones"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    alumno_id: Mapped[int] = mapped_column(ForeignKey("alumnos.id"), nullable=False)
+    id: Mapped[uuid.UUID] = uuid_pk()
+    alumno_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("alumnos.id"), nullable=False)
     titulo: Mapped[str] = mapped_column(String(100), nullable=False)
     fecha: Mapped[Date | None] = mapped_column(Date)
     comentario: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    alumno: Mapped["Alumno"] = relationship(back_populates="evaluaciones")  # noqa: F821
+    alumno: Mapped["Alumno"] = relationship(back_populates="evaluaciones")
     respuestas: Mapped[list["RespuestaEvaluacion"]] = relationship(
         back_populates="evaluacion", cascade="all, delete-orphan"
     )
@@ -48,11 +56,11 @@ class Evaluacion(Base):
 class RespuestaEvaluacion(Base):
     __tablename__ = "respuestas_evaluacion"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    evaluacion_id: Mapped[int] = mapped_column(ForeignKey("evaluaciones.id"), nullable=False)
-    pregunta_id: Mapped[int] = mapped_column(ForeignKey("preguntas.id"), nullable=False)
-    semaforo: Mapped[ColorSemaforo | None] = mapped_column(Enum(ColorSemaforo))  # solo tipo 'radio'
-    comentario: Mapped[str | None] = mapped_column(Text)  # ambos tipos
+    id: Mapped[uuid.UUID] = uuid_pk()
+    evaluacion_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("evaluaciones.id"), nullable=False)
+    pregunta_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("preguntas.id"), nullable=False)
+    semaforo: Mapped[ColorSemaforo | None] = mapped_column(Enum(ColorSemaforo))
+    comentario: Mapped[str | None] = mapped_column(Text)
 
     evaluacion: Mapped["Evaluacion"] = relationship(back_populates="respuestas")
     pregunta: Mapped["Pregunta"] = relationship()

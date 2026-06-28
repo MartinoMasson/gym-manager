@@ -38,8 +38,16 @@ class MainWindow(QMainWindow):
 
         self.stack = QStackedWidget()
         self.stack.setStyleSheet(f"background-color: {COLORS['oscuro']};")
-        self.stack.addWidget(self._placeholder("Alumnos"))      # index 0
-        self.stack.addWidget(self._placeholder("Evaluaciones")) # index 1
+
+        # Alumnos — página real
+        from app.ui.windows.alumnos_page import AlumnosPage
+        self.alumnos_page = AlumnosPage(self.profesor)
+        self.alumnos_page.alumno_seleccionado.connect(self._abrir_alumno)
+        self.stack.addWidget(self.alumnos_page)   # index 0
+
+        # Evaluaciones — placeholder por ahora
+        self.stack.addWidget(self._placeholder("Evaluaciones"))  # index 1
+
         layout.addWidget(self.stack)
 
     def _build_navbar(self) -> QWidget:
@@ -156,17 +164,19 @@ class MainWindow(QMainWindow):
         return nombre[:2].upper()
 
     def _crear_alumno(self):
-        from app.ui.dialogs.crear_alumno_dialog import CrearAlumnoDialog
-        dialog = CrearAlumnoDialog(self.profesor, self)
-        dialog.exec()
+        pass 
 
     def _crear_profesor(self):
-        from app.ui.dialogs.crear_profesor_dialog import CrearProfesorDialog
+        from app.ui.windows.dialogs.crear_profesor_dialog import CrearProfesorDialog
         dialog = CrearProfesorDialog(self)
-        dialog.exec()
-
+        if dialog.exec():
+            self._cargar_profesores()
+            
     def _crear_evaluacion(self):
-        pass  # próximamente
+        pass 
+    
+    def _abrir_alumno(self, alumno):
+        print(f"Abrir pestaña: {alumno.nombre}")  # por ahora
 
     def _placeholder(self, nombre: str) -> QWidget:
         w = QWidget()

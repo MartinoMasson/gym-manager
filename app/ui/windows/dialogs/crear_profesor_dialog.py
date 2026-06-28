@@ -8,6 +8,7 @@ from PyQt6.QtGui import QFont
 from app.database import LocalSession
 from app.services.usuario_service import UsuarioService
 from app.services.dtos import CrearProfesorDTO
+from app.database import get_sessions
 
 COLORS = {
     'primario': '#6366f1',
@@ -23,7 +24,7 @@ class CrearProfesorDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Nuevo profesor")
-        self.setFixedSize(400, 280)
+        self.setFixedSize(500, 380)
         self.setStyleSheet(f"background-color: {COLORS['oscuro']}; color: {COLORS['claro']};")
         self._build()
 
@@ -105,12 +106,14 @@ class CrearProfesorDialog(QDialog):
             QMessageBox.warning(self, "Error", "El nombre es obligatorio.")
             return
 
-        session = LocalSession()
-        service = UsuarioService(session)
+        from app.database import RemoteSession
+        local = LocalSession()
+        sessions = [local, RemoteSession()] if RemoteSession else [local]
+        service = UsuarioService(sessions)
         service.crear_profesor(CrearProfesorDTO(
             nombre=nombre,
             tel=self.input_tel.text().strip() or None,
             jefe=self.check_jefe.isChecked(),
         ))
-        session.close()
+        local.close()
         self.accept()

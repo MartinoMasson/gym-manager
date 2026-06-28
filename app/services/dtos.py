@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import date
+from uuid import UUID
 
 
 @dataclass
@@ -21,7 +22,7 @@ class CrearAlumnoDTO:
 
 @dataclass
 class DetallesAlumnoDTO:
-    alumno_id: int
+    alumno_id: UUID          
     peso: float = None
     imc: float = None
     grasa_corporal: float = None
@@ -29,17 +30,18 @@ class DetallesAlumnoDTO:
     grasa_visceral: float = None
     edad_metabolica: float = None
     fecha: date = None
-    
+
 
 @dataclass
 class CrearEvaluacionDTO:
-    alumno_id: int
+    alumno_id: UUID          
     titulo: str
     fecha: date = None
     comentario: str = None
 
+
 @dataclass
 class RespuestaDTO:
-    pregunta_id: int
-    semaforo: str = None  # ROJO, AMARILLO, VERDE
+    pregunta_id: UUID        
+    semaforo: str = None     # ROJO, AMARILLO, VERDE
     comentario: str = None
