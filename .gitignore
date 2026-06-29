@@ -1,0 +1,32 @@
+# ── PYTHON ──────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── ENTORNOS VIRTUALES ──────────────────────────
+.venv/
+venv/
+env/
+.env
+
+# ── DISTRIBUCIÓN / BUILD ────────────────────────
+dist/
+build/
+*.egg-info/
+*.spec
+
+# ── BASES DE DATOS ──────────────────────────────
+*.db
+*.sqlite3
+
+# ── ALEMBIC ─────────────────────────────────────
+# Las migraciones SÍ van al repo.
+alembic.ini.local
+
+# ── IDE / OS ────────────────────────────────────
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

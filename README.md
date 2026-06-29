@@ -36,40 +36,53 @@ python main.py
 ---
 
 ## Estructura del proyecto
+
+## Estructura del proyecto
+
+```text
 gym-manager/
-├── main.py                          # Entry point
-├── alembic.ini                      # Config de migraciones
-├── requirements.txt
-├── .env                             # Variables de entorno (no commitear)
+├── main.py                           # Entry point
+├── alembic.ini                       # Configuración de Alembic
+├── requirements.txt                  # Dependencias
+├── .env                              # Variables de entorno (no commitear)
+│
 ├── app/
-│  ├── database.py                  # Engines SQLite + PostgreSQL, Base ORM, Sessions
-│  ├── state.py                     # Store global en memoria (AppState singleton + señales PyQt)
-│  ├── models/
-│  │   ├── usuario.py               # Usuario, Profesor, Alumno, DetallesAlumno, Entrenamiento, cargo_de
-│  │   └── evaluacion.py            # Categoria, Pregunta, Evaluacion, RespuestaEvaluacion
-│  ├── services/
-│  │   ├── dtos.py                  # DataClasses (DTOs) para inputs de servicios
-│  │   ├── usuario_service.py       # CRUD de usuarios, profesores, alumnos (acepta lista de sesiones)
-│  │   └── evaluacion_service.py    # CRUD y lógica de evaluaciones
-│  └── ui/
-│      ├── windows/
-│      │   ├── login_window.py      # Pantalla de selección de perfil (estilo Netflix)
-│      │   ├── main_window.py       # Ventana principal con navbar, menú Crear y tabs de alumnos
-│      │   ├── alumnos_page.py      # Lista de alumnos con búsqueda y filtros
-│      │   └── alumno_detail.py     # Vista detalle del alumno con pestañas (General / Evaluaciones)
-│      └── dialogs/
-│          ├── crear_profesor_dialog.py
-│          └── crear_alumno_dialog.py
+│   ├── database.py                   # SQLite + PostgreSQL, Base ORM y sesiones
+│   ├── state.py                      # Estado global (AppState + señales PyQt)
+│   │
+│   ├── models/
+│   │   ├── usuario.py                # Usuario, Profesor, Alumno, DetallesAlumno, Entrenamiento, Cargo
+│   │   └── evaluacion.py             # Categoría, Pregunta, Evaluación y Respuestas
+│   │
+│   ├── services/
+│   │   ├── dtos.py                   # Data Transfer Objects (DTOs)
+│   │   ├── usuario_service.py        # CRUD de usuarios, profesores y alumnos
+│   │   └── evaluacion_service.py     # CRUD y lógica de evaluaciones
+│   │
+│   └── ui/
+│       ├── windows/
+│       │   ├── login_window.py       # Pantalla de inicio de sesión
+│       │   ├── main_window.py        # Ventana principal
+│       │   ├── alumnos_page.py       # Lista de alumnos
+│       │   └── alumno_detail.py      # Detalle del alumno
+│       │
+│       └── dialogs/
+│           ├── crear_profesor_dialog.py
+│           └── crear_alumno_dialog.py
+│
 ├── migrations/
-│  ├── env.py                       # Config Alembic — corre contra local y remoto simultáneamente
-│  └── versions/                    # Archivos de migración generados
+│   ├── env.py                        # Configuración de Alembic
+│   └── versions/                     # Migraciones
+│
 ├── scripts/
-│  ├── seed.py                      # Carga categorías y preguntas iniciales
-│  ├── sync.py                      # Sincronización unidireccional remoto → local
-│  └── updater.py                   # Auto-actualización desde GitHub via git pull
+│   ├── seed.py                       # Datos iniciales
+│   ├── sync.py                       # Sincronización remoto → local
+│   └── updater.py                    # Actualización automática desde GitHub
+│
 └── tests/
     ├── test_usuario_service.py
     └── test_evaluacion_service.py
+```
 ---
 
 ## Base de datos
