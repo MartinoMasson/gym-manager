@@ -96,7 +96,7 @@ class AvatarWidget(QWidget):
 
 
 class LoginWindow(QWidget):
-    login_exitoso = pyqtSignal(object)  # emite el Profesor seleccionado
+    login_exitoso = pyqtSignal(object)
 
     def __init__(self):
         super().__init__()
@@ -163,7 +163,13 @@ class LoginWindow(QWidget):
             }}
         """)
         btn_agregar.clicked.connect(self._agregar_profesor)
-        layout.addWidget(btn_agregar, alignment=Qt.AlignmentFlag.AlignCenter)
+        if ( not self._existe_profesor() ):
+            layout.addWidget(btn_agregar, alignment=Qt.AlignmentFlag.AlignCenter)
+
+    def _existe_profesor(self):
+        local = LocalSession()
+        service = UsuarioService([local])
+        return service.existe_profesor()
 
     def _cargar_profesores(self):
         from app.database import RemoteSession
@@ -173,7 +179,7 @@ class LoginWindow(QWidget):
             self.avatares_layout.itemAt(i).widget().deleteLater()
 
         local = LocalSession()
-        sessions = [local, RemoteSession()] if RemoteSession else [local]
+        sessions = [local]
         service = UsuarioService(sessions)
         profesores = service.listar_profesores()
         local.close()
@@ -189,7 +195,7 @@ class LoginWindow(QWidget):
         self.close()
 
     def _agregar_profesor(self):
-        from app.ui.windows.dialogs.crear_profesor_dialog import CrearProfesorDialog
+        from app.ui.dialogs.crear_profesor_dialog import CrearProfesorDialog
         dialog = CrearProfesorDialog(self)
         if dialog.exec():
             self._cargar_profesores()

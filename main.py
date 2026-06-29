@@ -6,10 +6,10 @@ from app.ui.windows.main_window import MainWindow
 
 
 def main():
-    # 1. Auto-actualización: si hay código nuevo en GitHub, descarga y reinicia
+    # 1. Auto-actualización
     try:
         from scripts.updater import verificar_actualizacion
-        verificar_actualizacion(preguntar=True)  # preguntar=False para actualizar sin avisar
+        verificar_actualizacion(preguntar=True)
     except Exception as e:
         print(f"[MAIN] Error en updater: {e}")
 
@@ -23,7 +23,12 @@ def main():
     except Exception as e:
         print(f"[MAIN] Error en sync: {e}")
 
-    # 4. Levantar la interfaz
+    # 4. Cargar estado global
+    from app.state import state
+    state.cargar_alumnos()
+    state.cargar_profesores()
+
+    # 5. Levantar la interfaz
     app = QApplication(sys.argv)
     app.setApplicationName("GymManager")
 

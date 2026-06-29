@@ -62,6 +62,7 @@ def sincronizar(verbose=True):
             usuario.Usuario.__table__,
             usuario.Profesor.__table__,
             usuario.Alumno.__table__,
+            usuario.Entrenamiento.__table__,
             usuario.DetallesAlumno.__table__,
             evaluacion.Categoria.__table__,
             evaluacion.Pregunta.__table__,

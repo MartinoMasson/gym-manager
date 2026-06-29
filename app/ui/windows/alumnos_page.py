@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
+from app.state import state
 from app.database import LocalSession
 from app.services.usuario_service import UsuarioService
 from app.models.usuario import Alumno
@@ -160,7 +161,8 @@ class AlumnosPage(QWidget):
         self.profesor = profesor
         self.setStyleSheet(f"background-color: {COLORS['oscuro']};")
         self._build()
-        self._cargar_alumnos()
+        state.alumnos_changed.connect(self._filtrar)
+        state.cargar_alumnos()
 
     def _build(self):
         layout = QVBoxLayout(self)
@@ -287,7 +289,7 @@ class AlumnosPage(QWidget):
         dia = self.filtro_dia.currentData()
 
         filtrados = []
-        for a in self.todos:
+        for a in state.get_alumnos():
             if texto and texto not in a.nombre.lower() and texto not in (a.tel or "").lower():
                 continue
             if estado_idx == 1 and a.estado != 1:

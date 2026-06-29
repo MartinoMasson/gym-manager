@@ -62,8 +62,20 @@ class UsuarioService:
         return self.session.get(Profesor, profesor_id)
 
     def get_alumno(self, alumno_id: uuid.UUID) -> Alumno | None:
-        return self.session.get(Alumno, alumno_id)
+        from sqlalchemy.orm import joinedload
+        return (
+            self.session.query(Alumno)
+            .options(
+                joinedload(Alumno.entrenamientos),
+                joinedload(Alumno.detalles),
+                joinedload(Alumno.evaluaciones),
+            )
+            .filter(Alumno.id == alumno_id)
+            .first()
+        )
 
+    def existe_profesor(self) -> bool:
+        return self.session.query(Profesor).first() is not None
     # --- Listar ---
     def listar_alumnos(self, activos_only: bool = True) -> list[Alumno]:
         query = self.session.query(Alumno)
