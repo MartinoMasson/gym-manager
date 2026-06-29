@@ -19,13 +19,16 @@ pip install -r requirements.txt
 cp .env.example .env
 # Editar .env con la URL de Neon
 
-# 4. Aplicar migraciones (crea tablas en local y remoto)
+# 4. Resetear y crear tablas en DB remota
+python resetdb_remote.py
+
+# 5. Aplicar migraciones en DB local
 alembic upgrade head
 
-# 5. Cargar datos iniciales (categorías y preguntas de evaluación)
+# 6. Cargar datos iniciales (categorías y preguntas de evaluación)
 python scripts/seed.py
 
-# 6. Correr la app
+# 7. Correr la app
 python main.py
 ```
 
@@ -38,19 +41,24 @@ gym-manager/
 ├── main.py                           # Entry point
 ├── alembic.ini                       # Configuración de Alembic
 ├── requirements.txt                  # Dependencias
+├── resetdb_remote.py                 # Reset completo de la DB remota (solo setup inicial)
 ├── .env                              # Variables de entorno (no commitear)
 │
 ├── app/
-│   ├── database.py                   # SQLite + PostgreSQL, Base ORM y sesiones
+│   ├── database.py                   # SQLite + PostgreSQL, Base ORM, sesiones y get_sessions()
 │   ├── state.py                      # Estado global (AppState + señales PyQt)
 │   │
+│   ├── jobs/
+│   │   ├── scheduler.py              # Setup y lifecycle del scheduler
+│   │   └── cleanup_jobs.py           # Job de limpieza de alumnos inactivos
+│   │
 │   ├── models/
-│   │   ├── usuario.py                # Usuario, Profesor, Alumno, DetallesAlumno, Entrenamiento, Cargo
-│   │   └── evaluacion.py             # Categoría, Pregunta, Evaluación y Respuestas
+│   │   ├── usuario.py                # Usuario, Profesor, Alumno, DetallesAlumno, Entrenamiento, cargo_de
+│   │   └── evaluacion.py             # Categoria, Pregunta, Evaluacion, RespuestaEvaluacion
 │   │
 │   ├── services/
-│   │   ├── dtos.py                   # Data Transfer Objects (DTOs)
-│   │   ├── usuario_service.py        # CRUD de usuarios, profesores y alumnos
+│   │   ├── dtos.py                   # Data Transfer Objects
+│   │   ├── usuario_service.py        # CRUD multi-sesión de usuarios, profesores y alumnos
 │   │   └── evaluacion_service.py     # CRUD y lógica de evaluaciones
 │   │
 │   └── ui/
@@ -66,17 +74,18 @@ gym-manager/
 │
 ├── migrations/
 │   ├── env.py                        # Configuración de Alembic
-│   └── versions/                     # Migraciones
+│   └── versions/                     # Migraciones generadas
 │
 ├── scripts/
-│   ├── seed.py                       # Datos iniciales
-│   ├── sync.py                       # Sincronización remoto → local
-│   └── updater.py                    # Actualización automática desde GitHub
+│   ├── seed.py                       # Datos iniciales (categorías y preguntas con UUIDs fijos)
+│   ├── sync.py                       # Sincronización remoto → local con detección de esquema
+│   └── updater.py                    # Auto-actualización desde GitHub + migraciones Alembic
 │
 └── tests/
     ├── test_usuario_service.py
     └── test_evaluacion_service.py
 ```
+
 ---
 
 ## Base de datos
@@ -88,22 +97,48 @@ gym-manager/
 - **Evaluaciones:** `Evaluacion`, `RespuestaEvaluacion`, `Categoria`, `Pregunta`
 - **Asignación profesor-alumno:** `cargo_de` (many-to-many)
 - **Días de entrenamiento:** `Entrenamiento` (dia + horario por día)
-- **PKs:** UUID generado en Python con `uuid.uuid4()` y `Uuid(as_uuid=True)` para compatibilidad SQLite + PostgreSQL
-- **Auditoría:** `updated_at` en `Usuario` — permite ordenar alumnos por última modificación
+- **PKs:** UUID generado en Python con `uuid.uuid4()` y `Uuid(as_uuid=True)` para compatibilidad SQLite + PostgreSQL — garantiza el mismo ID en ambas bases sin colisiones
+- **Auditoría:** `updated_at` en `Usuario` y `created_at` en `Evaluacion` — permite ordenar por última modificación y determinar correctamente la última evaluación cuando hay varias el mismo día
 
-### Sincronización local ↔ remoto
+### Escritura dual (local + remota)
+
+Todos los servicios reciben una lista de sesiones via `get_sessions()` desde `database.py`.
+Cada operación de escritura se replica en todas las sesiones disponibles:
+
+```python
+# Obtener sesiones (local siempre, remota si está configurada)
+from app.database import get_sessions
+service = UsuarioService(get_sessions())
+
+# Las lecturas usan sessions[0] (local)
+# Las escrituras iteran todas las sesiones
+```
+
+Esto garantiza que cualquier dato creado en la app queda en ambas bases simultáneamente.
+
+### Sincronización remoto → local
 
 La base remota (Neon) es la fuente de verdad. Al iniciar la app:
 
-1. `updater.py` verifica si hay commits nuevos en GitHub y reinicia si aplica.
-2. `sync.py` sincroniza los datos de remoto → local (unidireccional, tabla por tabla).
-3. Las migraciones Alembic corren contra **ambas bases simultáneamente**.
+1. `updater.py` verifica commits nuevos en GitHub y reinicia si aplica.
+2. `alembic upgrade head` corre automáticamente (con o sin actualización de código).
+3. `sync.py` sincroniza datos de remoto → local, tabla por tabla:
+   - Detecta y agrega columnas nuevas automáticamente (`ALTER TABLE`)
+   - Inserta registros que están en remota y no en local
+   - Actualiza registros que difieren
+   - Elimina registros locales que ya no existen en remota
 
 ```bash
 # Generar migración al modificar un modelo
 alembic revision --autogenerate -m "descripcion"
 alembic upgrade head
 ```
+
+### Datos iniciales (seed)
+
+Las categorías y preguntas de evaluación usan **UUIDs fijos hardcodeados** en `scripts/seed.py`.
+Esto garantiza que los IDs sean idénticos en remota y local sin importar el orden de inserción.
+Solo se ejecuta una vez contra la DB remota; el sync las baja automáticamente a local.
 
 ### Estado global (AppState)
 
@@ -112,6 +147,20 @@ alembic upgrade head
 - `state.cargar_alumnos()` → recarga desde DB local y emite `alumnos_changed`
 - `state.cargar_profesores()` → recarga desde DB local y emite `profesores_changed`
 - Las vistas **nunca escriben** al state directamente — siempre pasan por el service
+
+---
+
+## Auto-actualización
+
+Al arrancar `python main.py` se ejecuta automáticamente:
+
+1. **Verificar GitHub** — compara commit local vs remoto
+2. **Si hay update:** `git pull` → `alembic upgrade head` → reinicia la app
+3. **Si está al día:** `alembic upgrade head` (por migraciones pendientes)
+4. **Sync de datos** — remota → local
+5. **Scheduler** — job de limpieza de alumnos inactivos cada 24hs (corre contra DB remota)
+
+Para desplegar un cambio desde casa basta con hacer `git push`. La próxima vez que abran la app en el gimnasio se actualiza sola.
 
 ---
 
@@ -144,7 +193,7 @@ alembic upgrade head
 pytest tests/ -v
 ```
 
-Todos los tests usan SQLite en memoria — no requieren conexión a Neon.
+Todos los tests usan SQLite en memoria y sesiones como lista (`[session]`) — no requieren conexión a Neon.
 
 ---
 
@@ -160,11 +209,16 @@ python scripts/build.py
 ## Módulos
 
 - [x] Modelos: Usuario, Profesor, Alumno, DetallesAlumno, Entrenamiento, Evaluacion
+- [x] PKs con UUID generado en Python (compatible SQLite + PostgreSQL, sin colisiones entre DBs)
 - [x] Campo `updated_at` en Usuario para ordenar por última modificación
-- [x] Servicios: UsuarioService (multi-sesión), EvaluacionService
-- [x] Sync remoto → local (unidireccional)
-- [x] Auto-updater desde GitHub
+- [x] Campo `created_at` en Evaluacion para ordenar correctamente evaluaciones del mismo día
+- [x] Servicios multi-sesión: escritura dual automática en local y remota
+- [x] `get_sessions()` en database.py — abstrae la cantidad de DBs activas
+- [x] Sync remoto → local (unidireccional, con detección y aplicación de columnas nuevas)
+- [x] Auto-updater desde GitHub con `alembic upgrade head` integrado
+- [x] Datos de seed con UUIDs fijos (categorías y preguntas reproducibles)
 - [x] Store global en memoria (AppState con señales PyQt)
+- [x] Job de limpieza de alumnos inactivos (APScheduler, corre contra DB remota)
 - [x] Login estilo Netflix con creación de profesor si no hay ninguno
 - [x] Ventana principal con navbar, menú Crear y cerrar sesión
 - [x] Lista de alumnos con búsqueda, filtro por estado y filtro por día

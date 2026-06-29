@@ -1,20 +1,16 @@
 import uuid
-from sqlalchemy import String, Integer, Boolean, Float, Date, Text, ForeignKey, Table, Column
+from sqlalchemy import String, Integer, Boolean, Float, Date, Text, ForeignKey, Table, Column, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy import Uuid
-from sqlalchemy import DateTime
 from datetime import datetime
 from app.database import Base
 
-# Tipo compatible con SQLite y PostgreSQL
+
 def uuid_pk():
-    """Primary key UUID, generado en Python (mismo valor en ambas DBs)."""
     return mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-def uuid_fk(tabla: str):
-    """Foreign key UUID."""
-    return mapped_column(Uuid(as_uuid=True), ForeignKey(tabla), nullable=False)
+def uuid_fk(tabla: str, ondelete: str = "CASCADE"):
+    return mapped_column(Uuid(as_uuid=True), ForeignKey(tabla, ondelete=ondelete), nullable=False)
 
 
 cargo_de = Table(
@@ -53,15 +49,6 @@ class Profesor(Usuario):
 
     __mapper_args__ = {"polymorphic_identity": 2}
 
-class Entrenamiento(Base):
-    __tablename__ = "entrenamientos"
-
-    id: Mapped[uuid.UUID] = uuid_pk()
-    alumno_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("alumnos.id"), nullable=False)
-    dia: Mapped[int] = mapped_column(Integer, nullable=False)  # 1=Lunes ... 7=Domingo
-    horario: Mapped[str] = mapped_column(String(5), nullable=False)  # "08:30"
-
-    alumno: Mapped["Alumno"] = relationship(back_populates="entrenamientos")
 
 class Alumno(Usuario):
     __tablename__ = "alumnos"
@@ -70,6 +57,8 @@ class Alumno(Usuario):
     tel_emergencia: Mapped[str | None] = mapped_column(Text)
     fecha_nacimiento: Mapped[Date | None] = mapped_column(Date)
     estado: Mapped[int] = mapped_column(Integer, default=1)
+    fecha_inactividad: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # <-- nuevo
+
     evaluaciones: Mapped[list["Evaluacion"]] = relationship(
         back_populates="alumno", cascade="all, delete-orphan"
     )
@@ -83,11 +72,26 @@ class Alumno(Usuario):
     __mapper_args__ = {"polymorphic_identity": 1}
 
 
+class Entrenamiento(Base):
+    __tablename__ = "entrenamientos"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    alumno_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("alumnos.id", ondelete="CASCADE"), nullable=False
+    )
+    dia: Mapped[int] = mapped_column(Integer, nullable=False)
+    horario: Mapped[str] = mapped_column(String(5), nullable=False)
+
+    alumno: Mapped["Alumno"] = relationship(back_populates="entrenamientos")
+
+
 class DetallesAlumno(Base):
     __tablename__ = "detalles_alumno"
 
     id: Mapped[uuid.UUID] = uuid_pk()
-    alumno_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("alumnos.id"), nullable=False)
+    alumno_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("alumnos.id", ondelete="CASCADE"), nullable=False
+    )
     peso: Mapped[float | None] = mapped_column(Float)
     imc: Mapped[float | None] = mapped_column(Float)
     grasa_corporal: Mapped[float | None] = mapped_column(Float)

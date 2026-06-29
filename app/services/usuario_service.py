@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 from sqlalchemy.orm import Session
 from app.models.usuario import Usuario, Profesor, Alumno, DetallesAlumno, cargo_de
@@ -91,6 +92,7 @@ class UsuarioService:
             if not alumno:
                 continue
             alumno.estado = estado
+            alumno.fecha_inactividad = datetime.now() if estado == 0 else None
             if i == 0:
                 alumno_local = alumno
         self._commit_all()
