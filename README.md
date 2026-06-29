@@ -32,10 +32,6 @@ python main.py
 ---
 
 ## Estructura del proyecto
-
----
-
-## Estructura del proyecto
 gym-manager/
 ├── main.py                          # Entry point
 ├── alembic.ini                      # Config de migraciones
