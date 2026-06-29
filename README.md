@@ -33,10 +33,6 @@ python main.py
 
 ## Estructura del proyecto
 
----
-
-## Estructura del proyecto
-
 ```text
 gym-manager/
 ├── main.py                           # Entry point
