@@ -11,18 +11,7 @@ from app.services.usuario_service import UsuarioService
 from app.models.usuario import Profesor
 from app.database import get_sessions
 
-COLORS = {
-    'primario': '#6366f1',
-    'secundario': '#8b5cf6',
-    'exito': '#10b981',
-    'advertencia': '#f59e0b',
-    'info': '#06b6d4',
-    'oscuro': '#0f0f23',
-    'tarjeta': '#1e1e3f',
-    'acento': '#ec4899',
-    'gris': '#64748b',
-    'claro': '#f8fafc',
-}
+from app.ui.theme import theme
 
 AVATAR_COLORS = [
     '#6366f1', '#8b5cf6', '#10b981',
@@ -64,7 +53,7 @@ class AvatarWidget(QWidget):
         nombre = QLabel(profesor.nombre)
         nombre.setAlignment(Qt.AlignmentFlag.AlignCenter)
         nombre.setFont(QFont("Arial", 11, QFont.Weight.Bold))
-        nombre.setStyleSheet(f"color: {COLORS['claro']};")
+        nombre.setStyleSheet(f"color: {theme['claro']};")
         nombre.setWordWrap(True)
         layout.addWidget(nombre)
 
@@ -72,7 +61,7 @@ class AvatarWidget(QWidget):
         rol = QLabel("Jefe" if profesor.jefe else "Profesor")
         rol.setAlignment(Qt.AlignmentFlag.AlignCenter)
         rol.setFont(QFont("Arial", 9))
-        rol.setStyleSheet(f"color: {COLORS['gris']};")
+        rol.setStyleSheet(f"color: {theme['gris']};")
         layout.addWidget(rol)
 
         self.setStyleSheet(f"""
@@ -81,7 +70,7 @@ class AvatarWidget(QWidget):
                 border-radius: 12px;
             }}
             QWidget:hover {{
-                background-color: {COLORS['tarjeta']};
+                background-color: {theme['tarjeta']};
             }}
         """)
 
@@ -102,7 +91,7 @@ class LoginWindow(QWidget):
         super().__init__()
         self.setWindowTitle("GymManager — Login")
         self.setMinimumSize(800, 500)
-        self.setStyleSheet(f"background-color: {COLORS['oscuro']};")
+        self.setStyleSheet(f"background-color: {theme['oscuro']};")
         self._build()
         self._cargar_profesores()
 
@@ -115,14 +104,14 @@ class LoginWindow(QWidget):
         titulo = QLabel("¿Quién está usando la app?")
         titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         titulo.setFont(QFont("Arial", 26, QFont.Weight.Bold))
-        titulo.setStyleSheet(f"color: {COLORS['claro']};")
+        titulo.setStyleSheet(f"color: {theme['claro']};")
         layout.addWidget(titulo)
 
         # Subtítulo
         subtitulo = QLabel("Seleccioná tu perfil para continuar.")
         subtitulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitulo.setFont(QFont("Arial", 12))
-        subtitulo.setStyleSheet(f"color: {COLORS['gris']};")
+        subtitulo.setStyleSheet(f"color: {theme['gris']};")
         layout.addWidget(subtitulo)
 
         layout.addSpacing(40)
@@ -153,13 +142,13 @@ class LoginWindow(QWidget):
         btn_agregar.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
-                color: {COLORS['gris']};
-                border: 1px solid {COLORS['gris']};
+                color: {theme['gris']};
+                border: 1px solid {theme['gris']};
                 border-radius: 8px;
             }}
             QPushButton:hover {{
-                color: {COLORS['claro']};
-                border-color: {COLORS['claro']};
+                color: {theme['claro']};
+                border-color: {theme['claro']};
             }}
         """)
         btn_agregar.clicked.connect(self._agregar_profesor)

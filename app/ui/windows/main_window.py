@@ -7,16 +7,7 @@ from PyQt6.QtGui import QFont
 
 from app.models.usuario import Profesor
 
-COLORS = {
-    'primario': '#6366f1',
-    'secundario': '#8b5cf6',
-    'oscuro': '#0f0f23',
-    'tarjeta': '#1e1e3f',
-    'claro': '#f8fafc',
-    'gris': '#64748b',
-    'acento': '#ec4899',
-    'advertencia': '#f59e0b',
-}
+from app.ui.theme import theme
 
 
 class MainWindow(QMainWindow):
@@ -25,7 +16,7 @@ class MainWindow(QMainWindow):
         self.profesor = profesor
         self.setWindowTitle("GymManager")
         self.setMinimumSize(1100, 700)
-        self.setStyleSheet(f"background-color: {COLORS['oscuro']};")
+        self.setStyleSheet(f"background-color: {theme['oscuro']};")
         self._tabs_alumnos = {}  # alumno.id -> index en tab
         self._build()
 
@@ -43,22 +34,22 @@ class MainWindow(QMainWindow):
         self.tabs.setStyleSheet(f"""
             QTabWidget::pane {{
                 border: none;
-                background-color: {COLORS['oscuro']};
+                background-color: {theme['oscuro']};
             }}
             QTabBar::tab {{
-                background-color: {COLORS['tarjeta']};
-                color: {COLORS['gris']};
+                background-color: {theme['tarjeta']};
+                color: {theme['gris']};
                 padding: 10px 20px;
                 font-size: 13px;
                 border: none;
                 margin-right: 2px;
             }}
             QTabBar::tab:selected {{
-                color: {COLORS['claro']};
-                background-color: {COLORS['oscuro']};
-                border-top: 2px solid {COLORS['primario']};
+                color: {theme['claro']};
+                background-color: {theme['oscuro']};
+                border-top: 2px solid {theme['primario']};
             }}
-            QTabBar::tab:hover {{ color: {COLORS['claro']}; }}
+            QTabBar::tab:hover {{ color: {theme['claro']}; }}
             QTabBar::close-button {{
                 image: none;
                 subcontrol-position: right;
@@ -92,11 +83,11 @@ class MainWindow(QMainWindow):
         btn_cerrar.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
-                color: {COLORS['gris']};
+                color: {theme['gris']};
                 border: none;
                 font-size: 11px;
             }}
-            QPushButton:hover {{ color: {COLORS['claro']}; }}
+            QPushButton:hover {{ color: {theme['claro']}; }}
         """)
         btn_cerrar.clicked.connect(lambda: self._cerrar_tab_alumno(alumno.id))
         self.tabs.tabBar().setTabButton(index, self.tabs.tabBar().ButtonPosition.RightSide, btn_cerrar)
@@ -116,14 +107,14 @@ class MainWindow(QMainWindow):
     def _build_navbar(self) -> QWidget:
         navbar = QFrame()
         navbar.setFixedHeight(60)
-        navbar.setStyleSheet(f"background-color: {COLORS['tarjeta']}; border-bottom: 1px solid #2d2d5e;")
+        navbar.setStyleSheet(f"background-color: {theme['tarjeta']}; border-bottom: 1px solid #2d2d5e;")
 
         layout = QHBoxLayout(navbar)
         layout.setContentsMargins(24, 0, 24, 0)
 
         logo = QLabel("💪 GymManager")
         logo.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-        logo.setStyleSheet(f"color: {COLORS['primario']};")
+        logo.setStyleSheet(f"color: {theme['primario']};")
         layout.addWidget(logo)
 
         layout.addSpacing(24)
@@ -134,26 +125,26 @@ class MainWindow(QMainWindow):
         btn_crear.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_crear.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['primario']};
+                background-color: {theme['primario']};
                 color: white;
                 border: none;
                 border-radius: 8px;
                 padding: 0 16px;
             }}
-            QPushButton:hover {{ background-color: {COLORS['secundario']}; }}
+            QPushButton:hover {{ background-color: {theme['secundario']}; }}
         """)
 
         menu = QMenu(self)
         menu.setStyleSheet(f"""
             QMenu {{
-                background-color: {COLORS['tarjeta']};
-                color: {COLORS['claro']};
+                background-color: {theme['tarjeta']};
+                color: {theme['claro']};
                 border: 1px solid #2d2d5e;
                 border-radius: 8px;
                 padding: 4px;
             }}
             QMenu::item {{ padding: 8px 20px; border-radius: 6px; }}
-            QMenu::item:selected {{ background-color: {COLORS['primario']}; }}
+            QMenu::item:selected {{ background-color: {theme['primario']}; color: white; }}
         """)
         menu.addAction("👤  Nuevo alumno", self._crear_alumno)
         if self.profesor.jefe:
@@ -170,12 +161,12 @@ class MainWindow(QMainWindow):
         perfil.setFixedSize(36, 36)
         perfil.setAlignment(Qt.AlignmentFlag.AlignCenter)
         perfil.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        perfil.setStyleSheet(f"background-color: {COLORS['acento']}; color: white; border-radius: 18px;")
+        perfil.setStyleSheet(f"background-color: {theme['acento']}; color: white; border-radius: 18px;")
         layout.addWidget(perfil)
 
         nombre_label = QLabel(self.profesor.nombre.split()[0])
         nombre_label.setFont(QFont("Arial", 11))
-        nombre_label.setStyleSheet(f"color: {COLORS['claro']};")
+        nombre_label.setStyleSheet(f"color: {theme['claro']};")
         layout.addWidget(nombre_label)
 
         layout.addSpacing(16)
@@ -187,12 +178,12 @@ class MainWindow(QMainWindow):
         btn_cerrar.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
-                color: {COLORS['gris']};
-                border: 1px solid {COLORS['gris']};
+                color: {theme['gris']};
+                border: 1px solid {theme['gris']};
                 border-radius: 8px;
                 padding: 0 12px;
             }}
-            QPushButton:hover {{ color: {COLORS['claro']}; border-color: {COLORS['claro']}; }}
+            QPushButton:hover {{ color: white; border-color: {theme['claro']}; background-color: {theme['primario']}; }}
         """)
         btn_cerrar.clicked.connect(self._cerrar_sesion)
         layout.addWidget(btn_cerrar)
@@ -207,11 +198,11 @@ class MainWindow(QMainWindow):
         btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
-                color: {COLORS['gris']};
+                color: {theme['gris']};
                 border: none;
                 padding: 0 12px;
             }}
-            QPushButton:hover {{ color: {COLORS['claro']}; }}
+            QPushButton:hover {{ color: {theme['claro']}; }}
         """)
         return btn
 
@@ -253,6 +244,6 @@ class MainWindow(QMainWindow):
         label = QLabel(f"{nombre}\n(en construcción)")
         label.setFont(QFont("Arial", 16))
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet(f"color: {COLORS['gris']};")
+        label.setStyleSheet(f"color: {theme['gris']};")
         layout.addWidget(label)
         return w

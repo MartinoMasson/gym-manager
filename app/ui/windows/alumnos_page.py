@@ -10,18 +10,7 @@ from app.database import LocalSession
 from app.services.usuario_service import UsuarioService
 from app.models.usuario import Alumno
 
-COLORS = {
-    'primario': '#6366f1',
-    'secundario': '#8b5cf6',
-    'exito': '#10b981',
-    'advertencia': '#f59e0b',
-    'peligro': '#ef4444',
-    'oscuro': '#0f0f23',
-    'tarjeta': '#1e1e3f',
-    'claro': '#f8fafc',
-    'gris': '#64748b',
-    'borde': '#2d2d5e',
-}
+from app.ui.theme import theme
 
 DIAS = {1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb', 7: 'Dom'}
 
@@ -37,13 +26,12 @@ class AlumnoCard(QFrame):
         self.setFixedHeight(70)
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLORS['tarjeta']};
+                background-color: {theme['tarjeta']};
                 border-radius: 10px;
-                border: 1px solid {COLORS['borde']};
+                border: 1px solid {theme['borde']};
             }}
             QFrame:hover {{
-                border-color: {COLORS['primario']};
-                background-color: #252550;
+                border-color: {theme['primario']};
             }}
         """)
         self._build()
@@ -60,7 +48,7 @@ class AlumnoCard(QFrame):
         avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
         avatar.setFont(QFont("Arial", 13, QFont.Weight.Bold))
         avatar.setStyleSheet(f"""
-            background-color: {COLORS['primario']};
+            background-color: {theme['primario']};
             color: white;
             border-radius: 21px;
             border: none;
@@ -70,14 +58,14 @@ class AlumnoCard(QFrame):
         # Nombre
         nombre = QLabel(self.alumno.nombre)
         nombre.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        nombre.setStyleSheet(f"color: {COLORS['claro']}; border: none;")
+        nombre.setStyleSheet(f"color: {theme['claro']}; border: none;")
         nombre.setFixedWidth(200)
         layout.addWidget(nombre)
 
         # Teléfono
         tel = QLabel(self.alumno.tel or "—")
         tel.setFont(QFont("Arial", 11))
-        tel.setStyleSheet(f"color: {COLORS['gris']}; border: none;")
+        tel.setStyleSheet(f"color: {theme['gris']}; border: none;")
         tel.setFixedWidth(130)
         layout.addWidget(tel)
 
@@ -85,7 +73,7 @@ class AlumnoCard(QFrame):
         dias_texto = self._get_dias()
         dias = QLabel(dias_texto or "Sin días")
         dias.setFont(QFont("Arial", 10))
-        dias.setStyleSheet(f"color: {COLORS['secundario']}; border: none;")
+        dias.setStyleSheet(f"color: {theme['secundario']}; border: none;")
         dias.setFixedWidth(200)
         layout.addWidget(dias)
 
@@ -93,7 +81,7 @@ class AlumnoCard(QFrame):
         edad_texto = self._get_edad()
         edad = QLabel(edad_texto)
         edad.setFont(QFont("Arial", 11))
-        edad.setStyleSheet(f"color: {COLORS['gris']}; border: none;")
+        edad.setStyleSheet(f"color: {theme['gris']}; border: none;")
         edad.setFixedWidth(60)
         layout.addWidget(edad)
         
@@ -105,12 +93,12 @@ class AlumnoCard(QFrame):
         btn_eval.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
-                color: {COLORS['secundario']};
-                border: 1px solid {COLORS['secundario']};
+                color: {theme['secundario']};
+                border: 1px solid {theme['secundario']};
                 border-radius: 6px;
             }}
             QPushButton:hover {{
-                background-color: {COLORS['secundario']};
+                background-color: {theme['secundario']};
                 color: white;
             }}
         """)
@@ -123,7 +111,7 @@ class AlumnoCard(QFrame):
         activo = self.alumno.estado == 1
         estado = QLabel("● Activo" if activo else "● Inactivo")
         estado.setFont(QFont("Arial", 10))
-        color_estado = COLORS['exito'] if activo else COLORS['peligro']
+        color_estado = theme['exito'] if activo else theme['peligro']
         estado.setStyleSheet(f"color: {color_estado}; border: none;")
         layout.addWidget(estado)
 
@@ -159,7 +147,7 @@ class AlumnosPage(QWidget):
     def __init__(self, profesor, parent=None):
         super().__init__(parent)
         self.profesor = profesor
-        self.setStyleSheet(f"background-color: {COLORS['oscuro']};")
+        self.setStyleSheet(f"background-color: {theme['oscuro']};")
         self._build()
         state.alumnos_changed.connect(self._filtrar)
         state.cargar_alumnos()
@@ -173,7 +161,7 @@ class AlumnosPage(QWidget):
         header = QHBoxLayout()
         titulo = QLabel("Alumnos")
         titulo.setFont(QFont("Arial", 20, QFont.Weight.Bold))
-        titulo.setStyleSheet(f"color: {COLORS['claro']};")
+        titulo.setStyleSheet(f"color: {theme['claro']};")
         header.addWidget(titulo)
         header.addStretch()
         layout.addLayout(header)
@@ -187,14 +175,14 @@ class AlumnosPage(QWidget):
         self.search.setFixedHeight(38)
         self.search.setStyleSheet(f"""
             QLineEdit {{
-                background-color: {COLORS['tarjeta']};
-                color: {COLORS['claro']};
-                border: 1px solid {COLORS['borde']};
+                background-color: {theme['tarjeta']};
+                color: {theme['claro']};
+                border: 1px solid {theme['borde']};
                 border-radius: 8px;
                 padding: 0 14px;
                 font-size: 13px;
             }}
-            QLineEdit:focus {{ border-color: {COLORS['primario']}; }}
+            QLineEdit:focus {{ border-color: {theme['primario']}; }}
         """)
         self.search.textChanged.connect(self._filtrar)
         barra.addWidget(self.search)
@@ -204,18 +192,18 @@ class AlumnosPage(QWidget):
         self.filtro_estado.setFixedSize(130, 38)
         self.filtro_estado.setStyleSheet(f"""
             QComboBox {{
-                background-color: {COLORS['tarjeta']};
-                color: {COLORS['claro']};
-                border: 1px solid {COLORS['borde']};
+                background-color: {theme['tarjeta']};
+                color: {theme['claro']};
+                border: 1px solid {theme['borde']};
                 border-radius: 8px;
                 padding: 0 12px;
                 font-size: 13px;
             }}
             QComboBox::drop-down {{ border: none; }}
             QComboBox QAbstractItemView {{
-                background-color: {COLORS['tarjeta']};
-                color: {COLORS['claro']};
-                selection-background-color: {COLORS['primario']};
+                background-color: {theme['tarjeta']};
+                color: {theme['claro']};
+                selection-background-color: {theme['primario']};
             }}
         """)
         self.filtro_estado.currentIndexChanged.connect(self._filtrar)
@@ -238,13 +226,13 @@ class AlumnosPage(QWidget):
         for texto, ancho in [("Nombre", 200), ("Teléfono", 130), ("Días", 200), ("Edad", 60)]:
             l = QLabel(texto)
             l.setFont(QFont("Arial", 10))
-            l.setStyleSheet(f"color: {COLORS['gris']};")
+            l.setStyleSheet(f"color: {theme['gris']};")
             l.setFixedWidth(ancho)
             cab.addWidget(l)
         cab.addStretch()
         l = QLabel("Estado")
         l.setFont(QFont("Arial", 10))
-        l.setStyleSheet(f"color: {COLORS['gris']};")
+        l.setStyleSheet(f"color: {theme['gris']};")
         cab.addWidget(l)
         layout.addLayout(cab)
 
@@ -264,16 +252,13 @@ class AlumnosPage(QWidget):
 
         # Total
         self.label_total = QLabel()
-        self.label_total.setStyleSheet(f"color: {COLORS['gris']}; font-size: 11px;")
+        self.label_total.setStyleSheet(f"color: {theme['gris']}; font-size: 11px;")
         layout.addWidget(self.label_total)
 
     def _cargar_alumnos(self):
-        from app.database import RemoteSession
         from sqlalchemy.orm import joinedload
 
         local = LocalSession()
-        sessions = [local, RemoteSession()] if RemoteSession else [local]
-        service = UsuarioService(sessions)
         self.todos = (
             local.query(Alumno)
             .options(joinedload(Alumno.entrenamientos))
@@ -311,7 +296,7 @@ class AlumnosPage(QWidget):
         for alumno in alumnos:
             card = AlumnoCard(alumno)
             card.clicked.connect(self.alumno_seleccionado.emit)
-            card.ver_evaluaciones.connect(self.alumno_seleccionado.emit)  # por ahora mismo signal
+            card.ver_evaluaciones.connect(self.alumno_seleccionado.emit) 
             self.lista_layout.addWidget(card)
 
         total = len(alumnos)

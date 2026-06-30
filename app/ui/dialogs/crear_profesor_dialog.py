@@ -10,14 +10,7 @@ from app.services.usuario_service import UsuarioService
 from app.services.dtos import CrearProfesorDTO
 from app.database import get_sessions
 
-COLORS = {
-    'primario': '#6366f1',
-    'oscuro': '#0f0f23',
-    'tarjeta': '#1e1e3f',
-    'claro': '#f8fafc',
-    'gris': '#64748b',
-    'peligro': '#ef4444',
-}
+from app.ui.theme import theme
 
 
 class CrearProfesorDialog(QDialog):
@@ -25,7 +18,7 @@ class CrearProfesorDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Nuevo profesor")
         self.setFixedSize(500, 380)
-        self.setStyleSheet(f"background-color: {COLORS['oscuro']}; color: {COLORS['claro']};")
+        self.setStyleSheet(f"background-color: {theme['oscuro']}; color: {theme['claro']};")
         self._build()
 
     def _build(self):
@@ -35,30 +28,30 @@ class CrearProfesorDialog(QDialog):
 
         titulo = QLabel("Agregar profesor")
         titulo.setFont(QFont("Arial", 16, QFont.Weight.Bold))
-        titulo.setStyleSheet(f"color: {COLORS['claro']};")
+        titulo.setStyleSheet(f"color: {theme['claro']};")
         layout.addWidget(titulo)
 
         # Nombre
         self.input_nombre = self._input("Nombre completo")
-        layout.addWidget(QLabel("Nombre:", styleSheet=f"color: {COLORS['gris']}; font-size: 12px;"))
+        layout.addWidget(QLabel("Nombre:", styleSheet=f"color: {theme['gris']}; font-size: 12px;"))
         layout.addWidget(self.input_nombre)
 
         # Teléfono
         self.input_tel = self._input("Teléfono (opcional)")
-        layout.addWidget(QLabel("Teléfono:", styleSheet=f"color: {COLORS['gris']}; font-size: 12px;"))
+        layout.addWidget(QLabel("Teléfono:", styleSheet=f"color: {theme['gris']}; font-size: 12px;"))
         layout.addWidget(self.input_tel)
 
         # Jefe
         self.check_jefe = QCheckBox("Es jefe")
-        self.check_jefe.setStyleSheet(f"color: {COLORS['claro']}; font-size: 13px;")
+        self.check_jefe.setStyleSheet(f"color: {theme['claro']}; font-size: 13px;")
         layout.addWidget(self.check_jefe)
 
         layout.addSpacing(8)
 
         # Botones
         btn_layout = QHBoxLayout()
-        btn_cancelar = self._btn("Cancelar", COLORS['gris'])
-        btn_crear = self._btn("Crear", COLORS['primario'])
+        btn_cancelar = self._btn("Cancelar", theme['gris'])
+        btn_crear = self._btn("Crear", theme['primario'])
         btn_cancelar.clicked.connect(self.reject)
         btn_crear.clicked.connect(self._crear)
         btn_layout.addWidget(btn_cancelar)
@@ -71,15 +64,15 @@ class CrearProfesorDialog(QDialog):
         inp.setFixedHeight(36)
         inp.setStyleSheet(f"""
             QLineEdit {{
-                background-color: {COLORS['tarjeta']};
-                color: {COLORS['claro']};
-                border: 1px solid {COLORS['gris']};
+                background-color: {theme['tarjeta']};
+                color: {theme['claro']};
+                border: 1px solid {theme['gris']};
                 border-radius: 8px;
                 padding: 0 12px;
                 font-size: 13px;
             }}
             QLineEdit:focus {{
-                border-color: {COLORS['primario']};
+                border-color: {theme['primario']};
             }}
         """)
         return inp
@@ -96,7 +89,11 @@ class CrearProfesorDialog(QDialog):
                 border: none;
                 border-radius: 8px;
             }}
-            QPushButton:hover {{ opacity: 0.85; }}
+            QPushButton:hover {{ 
+                background-color: white; 
+                border: 1px solid {color};
+                color: {theme['primario']}
+            }}
         """)
         return btn
 
