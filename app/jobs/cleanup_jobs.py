@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from app.models.usuario import Alumno  # CORREGIDO: era from app.models import Alumno
+from app.models.usuario import Alumno  
+import logging
 
+logger = logging.getLogger(__name__)
 
 def cleanup_alumnos_inactivos(session: Session, meses: int = 6) -> int:
     """
@@ -24,6 +26,6 @@ def cleanup_alumnos_inactivos(session: Session, meses: int = 6) -> int:
 
     if count:
         session.commit()
-        print(f"[CLEANUP] {count} alumno(s) eliminado(s) por inactividad.")
+        logger.info(f"[CLEANUP] {count} alumno(s) eliminado(s) por inactividad.")
 
     return count

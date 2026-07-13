@@ -1,14 +1,14 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QCheckBox, QDateEdit,
-    QMessageBox, QGridLayout, QFrame, QScrollArea, QWidget
+    QMessageBox, QGridLayout, QFrame
 )
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QFont
 
 from app.database import LocalSession
 from app.services.usuario_service import UsuarioService
-from app.services.dtos import CrearAlumnoDTO
+from app.services.dtos import CrearAlumnoDTO, HorarioEntrenamientoDTO
 from app.state import state
 
 from app.ui.theme import theme
@@ -147,7 +147,7 @@ class CrearAlumnoDialog(QDialog):
                 h.setEnabled(checked),
                 f.setStyleSheet(f"""
                     QFrame {{
-                        background-color: {"#1e1e4f" if checked else theme['tarjeta']};
+                        background-color: {theme['sombra'] if checked else theme['tarjeta']};
                         border: 1px solid {theme['primario'] if checked else theme['borde']};
                         border-radius: 10px;
                         padding: 4px;
@@ -216,7 +216,7 @@ class CrearAlumnoDialog(QDialog):
     def _input_style(self) -> str:
         return f"""
             QLineEdit, QDateEdit {{
-                background-color: {theme['tarjeta']};
+                background-color: {theme['oscuro']};
                 color: {theme['claro']};
                 border: 1px solid {theme['borde']};
                 border-radius: 8px;
@@ -237,7 +237,7 @@ class CrearAlumnoDialog(QDialog):
         btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {color};
-                color: white;
+                color: {theme['texto_boton']};
                 border: none;
                 border-radius: 8px;
                 padding: 0 20px;
@@ -272,8 +272,6 @@ class CrearAlumnoDialog(QDialog):
         _s.close()
 
         from app.database import RemoteSession
-        from app.models.usuario import Entrenamiento
-        import uuid
 
         local = LocalSession()
         remote = RemoteSession() if RemoteSession else None
@@ -289,17 +287,15 @@ class CrearAlumnoDialog(QDialog):
         ))
 
         # Agregar días de entrenamiento
+        print("Días seleccionados:", [dia for dia, (cb, horario_input) in self.dias_widgets.items() if cb.isChecked()])
         for dia, (cb, horario_input) in self.dias_widgets.items():
             if cb.isChecked():
-                ent_id = uuid.uuid4()
                 horario = horario_input.text().strip() or "08:00"
-                for s in sessions:
-                    s.add(Entrenamiento(
-                        id=ent_id,
-                        alumno_id=alumno.id,
-                        dia=dia,
-                        horario=horario,
-                    ))
+                service.insert_dia_entrenamiento(HorarioEntrenamientoDTO(
+                    alumno_id=alumno.id,
+                    dia=dia,
+                    horario=horario,
+                ))
 
         for s in sessions:
             s.commit()

@@ -1,5 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.jobs.cleanup_jobs import cleanup_alumnos_inactivos
+import logging
+logger = logging.getLogger(__name__)
 
 _scheduler = BackgroundScheduler()
 
@@ -13,21 +15,21 @@ def start_scheduler(remote_session_factory):
         replace_existing=True,
     )
     _scheduler.start()
-    print("[SCHEDULER] Iniciado.")
+    logger.info("[SCHEDULER] Iniciado.")
 
 
 def stop_scheduler():
     if _scheduler.running:
         _scheduler.shutdown(wait=False)
-        print("[SCHEDULER] Detenido.")
+        logger.info("[SCHEDULER] Detenido.")
 
 
 def _run_cleanup(session_factory):
     session = session_factory()
     try:
         cleanup_alumnos_inactivos(session)
-    except Exception as e:
-        print(f"[SCHEDULER] Error en cleanup: {e}")
+    except Exception:
+        logger.exception("[SCHEDULER] Error en cleanup_alumnos_inactivos")
         session.rollback()
     finally:
         session.close()

@@ -57,7 +57,7 @@ class Alumno(Usuario):
     tel_emergencia: Mapped[str | None] = mapped_column(Text)
     fecha_nacimiento: Mapped[Date | None] = mapped_column(Date)
     estado: Mapped[int] = mapped_column(Integer, default=1)
-    fecha_inactividad: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # <-- nuevo
+    fecha_inactividad: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     evaluaciones: Mapped[list["Evaluacion"]] = relationship(
         back_populates="alumno", cascade="all, delete-orphan"

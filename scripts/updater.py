@@ -15,8 +15,9 @@ Uso:
 import os
 import sys
 import subprocess
+import logging
 
-
+logger = logging.getLogger(__name__)
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -44,7 +45,7 @@ def _alembic_upgrade():
     )
 
     if result.returncode != 0:
-        print(f"[UPDATER] Error al aplicar migraciones:\n{result.stderr}")
+        logger.exception(f"[UPDATER] Error al aplicar migraciones:\n{result.stderr}")
         return False
 
     if result.stdout.strip():
@@ -72,8 +73,8 @@ def hay_actualizacion():
         local  = _commit_local()
         remoto = _commit_remoto()
         return local != remoto
-    except Exception as e:
-        print(f"[UPDATER] No se pudo verificar actualizaciones: {e}")
+    except Exception:
+        logger.exception("Error al verificar actualizaciones")
         return False
 
 
@@ -86,7 +87,7 @@ def aplicar_actualizacion():
     code, out, err = _git("pull", "origin", "master")
 
     if code != 0:
-        print(f"[UPDATER] Error al actualizar código: {err}")
+        logger.exception(f"[UPDATER] Error al actualizar código: {err}")
         return False
 
     print(f"[UPDATER] Código actualizado:\n{out}")
@@ -94,7 +95,7 @@ def aplicar_actualizacion():
     # Correr migraciones después del pull
     ok = _alembic_upgrade()
     if not ok:
-        print("[UPDATER] Advertencia: las migraciones fallaron. La app puede ser inestable.")
+        logger.exception("[UPDATER] Advertencia: las migraciones fallaron. La app puede ser inestable.")
         # No abortamos — el sync.py tiene su propia resiliencia de esquema como respaldo
 
     print("[UPDATER] Reiniciando aplicación...")
@@ -121,8 +122,7 @@ def verificar_actualizacion(preguntar=False):
 
     if preguntar:
         try:
-            from PyQt6.QtWidgets import QApplication, QMessageBox
-            app = QApplication.instance() or QApplication(sys.argv)
+            from PyQt6.QtWidgets import QMessageBox
             resp = QMessageBox.question(
                 None,
                 "Actualización disponible",
@@ -132,10 +132,9 @@ def verificar_actualizacion(preguntar=False):
             if resp == QMessageBox.StandardButton.Yes:
                 aplicar_actualizacion()
             else:
-                # No actualizó código, pero igual correr migraciones pendientes
                 _alembic_upgrade()
         except Exception as e:
-            print(f"[UPDATER] No se pudo mostrar diálogo: {e}")
+            logger.exception(f"[UPDATER] No se pudo mostrar diálogo: {e}")
             aplicar_actualizacion()
     else:
         aplicar_actualizacion()

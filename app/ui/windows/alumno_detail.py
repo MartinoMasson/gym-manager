@@ -1,6 +1,7 @@
+import logging
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QTabWidget, QFrame, QGridLayout, QScrollArea
+    QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QPushButton, QTabWidget, QGridLayout, QScrollArea, QMessageBox
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -9,7 +10,9 @@ from app.models.usuario import Alumno
 from app.database import LocalSession
 from app.state import state
 from PyQt6.QtCore import Qt, pyqtSignal
+import logging
 
+logger = logging.getLogger(__name__)
 
 from app.ui.theme import theme
 
@@ -17,8 +20,8 @@ DIAS = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves',
         5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
 
 
-
 class AlumnoDetail(QWidget):
+    logger = logging.getLogger(__name__)
     eliminar_solicitado = pyqtSignal(object)
     activar_solicitado = pyqtSignal(object)
 
@@ -31,14 +34,19 @@ class AlumnoDetail(QWidget):
         state.alumnos_changed.connect(self._refrescar)
 
     def _refrescar(self):
-        self._cargar_alumno()
+        try:
+            self._cargar_alumno()
+        except Exception as e:
+            logger.exception("Error al refrescar detalles del alumno")
+            return
+
         # Actualizar header
-        activo = self.alumno.estado == 1
+        activo = self.alumno.estado == 1 if self.alumno else False
         self._estado_label.setText("● Activo" if activo else "● Inactivo")
         self._estado_label.setStyleSheet(f"color: {theme['exito'] if activo else theme['peligro']};")
         self._btn_accion.setText("🗑 Eliminar alumno" if activo else "✅ Activar alumno")
         self._btn_accion.clicked.disconnect()
-        self._btn_accion.clicked.connect(self._confirmar_eliminar if activo else self._confirmar_activacion)
+        self._btn_accion.clicked.connect(self._confirmar_eliminar if activo else self._activar)
         
         # Reconstruir tab General
         tab_index = self.tabs.currentIndex()
@@ -88,7 +96,7 @@ class AlumnoDetail(QWidget):
                 color: white;
             }}
         """)
-        self._btn_accion.clicked.connect(self._confirmar_eliminar if activo else self._confirmar_activacion)
+        self._btn_accion.clicked.connect(self._confirmar_eliminar if activo else self._activar)
         header.addWidget(self._btn_accion)
 
         layout.addLayout(header)
@@ -134,19 +142,20 @@ class AlumnoDetail(QWidget):
         layout.addWidget(self._seccion("Datos personales"))
         grid = QGridLayout()
         grid.setSpacing(12)
-        campos = [
-            ("Teléfono", self.alumno.tel or "—"),
-            ("Tel. emergencia", self.alumno.tel_emergencia or "—"),
-            ("Fecha nacimiento", str(self.alumno.fecha_nacimiento) if self.alumno.fecha_nacimiento else "—"),
-            ("Edad", self._get_edad()),
-            ("Usuario", self.alumno.user or "—"),
-            ("Días de entrenamiento", self._get_dias()),
-        ]
+        if self.alumno:
+            campos = [
+                ("Teléfono", self.alumno.tel or "—"),
+                ("Tel. emergencia", self.alumno.tel_emergencia or "—"),
+                ("Fecha nacimiento", str(self.alumno.fecha_nacimiento) if self.alumno.fecha_nacimiento else "—"),
+                ("Edad", self._get_edad()),
+                ("Usuario", self.alumno.user or "—"),
+                ("Días de entrenamiento", self._get_dias()),
+            ]
 
-        for i, (label, valor) in enumerate(campos):
-            fila, col = divmod(i, 2)
-            grid.addWidget(self._campo_label(label), fila, col * 2)
-            grid.addWidget(self._campo_valor(valor), fila, col * 2 + 1)
+            for i, (label, valor) in enumerate(campos):
+                fila, col = divmod(i, 2)
+                grid.addWidget(self._campo_label(label), fila, col * 2)
+                grid.addWidget(self._campo_valor(valor), fila, col * 2 + 1)
 
         layout.addLayout(grid)
 
@@ -265,8 +274,7 @@ class AlumnoDetail(QWidget):
         for texto, fn in acciones:
             menu.addAction(texto, fn)
         return menu
-
-    
+ 
     def _agregar_datos_corporales(self):
         from app.ui.dialogs.agregar_detalles_dialog import AgregarDetallesDialog
         from types import SimpleNamespace
@@ -326,8 +334,13 @@ class AlumnoDetail(QWidget):
         print("Ver última evaluación")
         
     # DATOS PERSONALES
+    def _ver_historial_datos_corporales(self):
+        print("Ver historial de datos corporales")
+    
+    #EDITAR ALUMNO
     def _confirmar_eliminar(self):
-        from PyQt6.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox, QCheckBox
+
         msg = QMessageBox(self)
         msg.setWindowTitle("Confirmar eliminación")
         msg.setText(f"¿Estás seguro que querés eliminar a <b>{self.alumno.nombre}</b>?")
@@ -351,10 +364,49 @@ class AlumnoDetail(QWidget):
             }}
         """)
 
-        if msg.exec() == QMessageBox.StandardButton.Yes:
-            self._eliminar()
+        check_delete = QCheckBox("Eliminar por completo")
+        check_delete.setStyleSheet(f"""
+            QCheckBox {{
+                color: {theme['claro']};
+                font-size: 13px;
+            }}
+            QCheckBox::indicator {{
+                width: 14px;
+                height: 14px;
+                border: 1px solid {theme['borde']};
+                border-radius: 3px;
+                background: {theme['oscuro']};
+            }}
+            QCheckBox::indicator:checked {{
+                background: {theme['primario']};
+                border-color: {theme['primario']};
+            }}
+        """)
+        msg.setCheckBox(check_delete)
 
-    def _eliminar(self):
+        if msg.exec() == QMessageBox.StandardButton.Yes:
+            if check_delete.isChecked():
+                self._eliminar_completo()
+            else:
+                self._desactivar()
+
+    def _eliminar_completo(self):
+        try:
+            from app.database import RemoteSession
+            from app.services.usuario_service import UsuarioService
+            id = self.alumno.id
+            local = LocalSession()
+            sessions = [local, RemoteSession()] if RemoteSession else [local]
+            service = UsuarioService(sessions)
+            service.eliminar_alumno(self.alumno.id)
+            local.close()
+            state.cargar_alumnos() 
+            self.eliminar_solicitado.emit(id)
+        except Exception:
+            logger.exception("[ERROR] eliminar_alumno_completo")
+            QMessageBox.warning(self, "Error", "Error al eliminar el alumno.")
+
+    def _desactivar(self):
         from app.database import RemoteSession
         from app.services.usuario_service import UsuarioService
         local = LocalSession()
@@ -364,34 +416,6 @@ class AlumnoDetail(QWidget):
         local.close()
         state.cargar_alumnos()  # recarga y emite la señal
         self.eliminar_solicitado.emit(self.alumno.id)
-        
-    def _confirmar_activacion(self):
-        from PyQt6.QtWidgets import QMessageBox
-        msg = QMessageBox(self)
-        msg.setWindowTitle("Confirmar activación")
-        msg.setText(f"¿Estás seguro que querés activar a <b>{self.alumno.nombre}</b>?")
-        msg.setInformativeText("Esta acción no se puede deshacer.")
-        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel)
-        msg.setDefaultButton(QMessageBox.StandardButton.Cancel)
-        msg.button(QMessageBox.StandardButton.Yes).setText("Sí, activar")
-        msg.button(QMessageBox.StandardButton.Cancel).setText("Cancelar")
-        msg.setStyleSheet(f"""
-            QMessageBox {{
-                background-color: {theme['oscuro']};
-                color: {theme['claro']};
-            }}
-            QLabel {{ color: {theme['claro']}; }}
-            QPushButton {{
-                padding: 6px 16px;
-                border-radius: 6px;
-                border: 1px solid {theme['gris']};
-                color: {theme['claro']};
-                background-color: {theme['tarjeta']};
-            }}
-        """)
-
-        if msg.exec() == QMessageBox.StandardButton.Yes:
-            self._activar()
         
     def _activar(self):
         from app.database import RemoteSession
@@ -404,9 +428,26 @@ class AlumnoDetail(QWidget):
         state.cargar_alumnos()  # recarga y emite la señal
         self.activar_solicitado.emit(self.alumno.id)
             
-    def _ver_historial_datos_corporales(self):
-        print("Ver historial de datos corporales")
-    
-    #EDITAR ALUMNO
     def _editar_alumno(self):
-        print("Editar alumno")
+        from app.ui.dialogs.editar_usuario import EditarAlumnoDialog
+        from app.database import RemoteSession
+        from app.services.usuario_service import UsuarioService
+
+        dialog = EditarAlumnoDialog(self.alumno, parent=self)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            dto = dialog.get_dto()
+            local = LocalSession()
+            sessions = [local, RemoteSession()] if RemoteSession else [local]
+            service = UsuarioService(sessions)
+            try:
+                resultado = service.actualizar_alumno(dto)
+                if resultado:
+                    state.cargar_alumnos()
+                else:
+                    QMessageBox.warning(self, "Error", "No se pudo actualizar el alumno.")
+            except Exception:
+                logger.exception("Error al actualizar alumno")
+                QMessageBox.warning(self, "Error", "Error al actualizar el alumno.")
+            finally:
+                local.close()

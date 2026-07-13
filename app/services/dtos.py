@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 from uuid import UUID
+from datetime import time
 
 
 @dataclass
@@ -45,3 +46,24 @@ class RespuestaDTO:
     pregunta_id: UUID        
     semaforo: str = None     # ROJO, AMARILLO, VERDE
     comentario: str = None
+    
+@dataclass
+class HorarioEntrenamientoDTO:
+    alumno_id: UUID
+    dia: str 
+    horario: time
+    
+@dataclass
+class ActualizarAlumnoDTO:
+    alumno_id: UUID
+    nombre: str
+    tel: str
+    tel_emergencia: str
+    horarios: list[HorarioEntrenamientoDTO]
+    
+@dataclass
+class ActualizarProfesorDTO:
+    profesor_id: UUID
+    nombre: str
+    tel: str
+    jefe: bool

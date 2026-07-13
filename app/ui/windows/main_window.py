@@ -17,7 +17,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("GymManager")
         self.setMinimumSize(1100, 700)
         self.setStyleSheet(f"background-color: {theme['oscuro']};")
-        self._tabs_alumnos = {}  # alumno.id -> index en tab
+        self._tabs_alumnos = {}
         self._build()
 
     def _build(self):

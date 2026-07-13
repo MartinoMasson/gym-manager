@@ -161,8 +161,6 @@ class LoginWindow(QWidget):
         return service.existe_profesor()
 
     def _cargar_profesores(self):
-        from app.database import RemoteSession
-
         # Limpiar avatares existentes
         for i in reversed(range(self.avatares_layout.count())):
             self.avatares_layout.itemAt(i).widget().deleteLater()

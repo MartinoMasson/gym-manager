@@ -10,6 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy import inspect, text
 from app.database import LocalSession, RemoteSession, local_engine
 from app.models import usuario, evaluacion
+import logging
+logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────
@@ -21,24 +23,28 @@ def _columnas_faltantes(tabla, remote_conn, local_conn):
     Compara columnas de la tabla entre remota y local.
     Retorna lista de Column objects que están en remota pero no en local.
     """
-    remote_inspector = inspect(remote_conn)
-    local_inspector  = inspect(local_conn)
+    try:
+        remote_inspector = inspect(remote_conn)
+        local_inspector  = inspect(local_conn)
 
-    nombre = tabla.name
+        nombre = tabla.name
 
-    # Si la tabla directamente no existe en local, no hay nada que comparar acá
-    if nombre not in local_inspector.get_table_names():
+        # Si la tabla directamente no existe en local, no hay nada que comparar acá
+        if nombre not in local_inspector.get_table_names():
+            return []
+
+        remote_cols = {c["name"]: c for c in remote_inspector.get_columns(nombre)}
+        local_cols  = {c["name"] for c in local_inspector.get_columns(nombre)}
+
+        faltantes = []
+        for col_name, col_info in remote_cols.items():
+            if col_name not in local_cols:
+                faltantes.append((col_name, col_info))
+
+        return faltantes
+    except Exception as e:
+        logger.exception(f"Error al comparar columnas de la tabla '{tabla.name}")
         return []
-
-    remote_cols = {c["name"]: c for c in remote_inspector.get_columns(nombre)}
-    local_cols  = {c["name"] for c in local_inspector.get_columns(nombre)}
-
-    faltantes = []
-    for col_name, col_info in remote_cols.items():
-        if col_name not in local_cols:
-            faltantes.append((col_name, col_info))
-
-    return faltantes
 
 
 def _aplicar_columnas_faltantes(tabla, remote_conn, local_conn, verbose=True):
@@ -46,27 +52,30 @@ def _aplicar_columnas_faltantes(tabla, remote_conn, local_conn, verbose=True):
     Para cada columna que existe en remota pero no en local,
     emite un ALTER TABLE ... ADD COLUMN en la DB local.
     """
-    faltantes = _columnas_faltantes(tabla, remote_conn, local_conn)
+    try:
+        faltantes = _columnas_faltantes(tabla, remote_conn, local_conn)
 
-    for col_name, col_info in faltantes:
-        tipo_str = _tipo_sqlite(col_info["type"])
-        nullable = col_info.get("nullable", True)
-        default  = col_info.get("default")
+        for col_name, col_info in faltantes:
+            tipo_str = _tipo_sqlite(col_info["type"])
+            nullable = col_info.get("nullable", True)
+            default  = col_info.get("default")
 
-        ddl = f'ALTER TABLE "{tabla.name}" ADD COLUMN "{col_name}" {tipo_str}'
-        if not nullable and default is not None:
-            ddl += f" DEFAULT {default} NOT NULL"
-        elif not nullable:
-            # SQLite no permite NOT NULL sin DEFAULT en ALTER TABLE
-            ddl += f" DEFAULT NULL"
+            ddl = f'ALTER TABLE "{tabla.name}" ADD COLUMN "{col_name}" {tipo_str}'
+            if not nullable and default is not None:
+                ddl += f" DEFAULT {default} NOT NULL"
+            elif not nullable:
+                # SQLite no permite NOT NULL sin DEFAULT en ALTER TABLE
+                ddl += f" DEFAULT NULL"
 
-        if verbose:
-            print(f"[SYNC] Schema: agregando columna '{col_name}' a '{tabla.name}'")
+            if verbose:
+                print(f"[SYNC] Schema: agregando columna '{col_name}' a '{tabla.name}'")
 
-        local_conn.execute(text(ddl))
+            local_conn.execute(text(ddl))
 
-    return len(faltantes)
-
+        return len(faltantes)
+    except Exception as e:
+        logger.exception(f"Error al aplicar columnas faltantes en la tabla '{tabla.name}'")
+        return 0
 
 def _tipo_sqlite(sa_type):
     """Mapea tipos SQLAlchemy a strings SQLite."""
@@ -215,9 +224,9 @@ def sincronizar(verbose=True):
         if verbose:
             print("[SYNC] Sincronización completada ✓")
 
-    except Exception as ex:
+    except Exception:
         local_session.rollback()
-        print(f"[SYNC] Error durante la sincronización: {ex}")
+        logger.exception("[SYNC] Error durante la sincronización")
         raise
 
     finally:

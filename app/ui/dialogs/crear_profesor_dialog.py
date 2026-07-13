@@ -43,7 +43,18 @@ class CrearProfesorDialog(QDialog):
 
         # Jefe
         self.check_jefe = QCheckBox("Es jefe")
-        self.check_jefe.setStyleSheet(f"color: {theme['claro']}; font-size: 13px;")
+        self.check_jefe.setStyleSheet(f"""
+            QCheckBox {{
+                color: {theme['claro']};
+                font-size: 13px;
+            }}
+            QCheckBox::indicator {{
+                width: 14px;
+                height: 14px;
+                border: 1px solid black;
+                border-radius: 3px;
+            }}
+        """)
         layout.addWidget(self.check_jefe)
 
         layout.addSpacing(8)

@@ -4,40 +4,43 @@ from PyQt6.QtCore import QObject, pyqtSignal
 class Theme(QObject):
     theme_changed = pyqtSignal()
 
-    LIGHT = {
-        'primario': '#ffffff',
-        'secundario': '#cccccc',
-        'exito': '#10b981',
-        'advertencia': '#f59e0b',
-        'peligro': '#ef4444',
-        'info': '#06b6d4',
-        'oscuro': '#000000',
-        'claro': '#ffffff',
-        'gris': '#888888',
-        'tarjeta': '#111111',
-        'acento': '#ffffff',
-        'borde': '#333333',
-    }
-    
-
     DARK = {
-        'primario': '#000000',
-        'secundario': '#333333',
+        'primario': '#e5e5e5',      # acento claro, ya NO igual a fondo
+        'secundario': '#2a2a2a',
         'exito': '#10b981',
         'advertencia': '#f59e0b',
         'peligro': '#ef4444',
         'info': '#06b6d4',
-        'oscuro': '#ffffff',
-        'claro': '#000000',
-        'gris': '#666666',
-        'tarjeta': '#f0f0f0',
-        'acento': '#000000',
-        'borde': '#cccccc',
+        'oscuro': '#121212',        # fondo principal (no negro puro, menos duro)
+        'claro': '#f2f2f2',         # texto principal
+        'gris': '#8a8a8a',          # texto secundario / placeholders
+        'tarjeta': '#1c1c1c',       # fondo de frames/cards
+        'acento': '#e5e5e5',
+        'borde': '#3a3a3a',
+        'texto_boton': '#121212',  # texto sobre botones (contrasta con 'primario')
+        'sombra': 'rgba(0, 0, 0, 0.4)',
+    }
+
+    LIGHT = {
+        'primario': '#1a1a1a',      # acento oscuro, ya NO igual a fondo
+        'secundario': '#e0e0e0',
+        'exito': '#10b981',
+        'advertencia': '#f59e0b',
+        'peligro': '#ef4444',
+        'info': '#06b6d4',
+        'oscuro': '#fafafa',        # fondo principal (no blanco puro)
+        'claro': '#1a1a1a',         # texto principal
+        'gris': '#767676',
+        'tarjeta': '#ffffff',
+        'acento': '#1a1a1a',
+        'borde': '#dcdcdc',
+        'texto_boton': '#fafafa',
+        'sombra': 'rgba(0, 0, 0, 0.12)',
     }
 
     def __init__(self):
         super().__init__()
-        self._current = self.DARK
+        self._current = self.LIGHT
 
     def toggle(self):
         self._current = self.LIGHT if self._current == self.DARK else self.DARK
@@ -50,5 +53,4 @@ class Theme(QObject):
         return self._current[key]
 
 
-# Singleton
 theme = Theme()
