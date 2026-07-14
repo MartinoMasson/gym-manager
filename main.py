@@ -21,6 +21,8 @@ sys.excepthook = excepthook
 
 
 def main():
+    app = QApplication(sys.argv)
+    app.setApplicationName("Gennes Gimnasio")
     # 1. Auto-actualización + migraciones Alembic
     try:
         from scripts.updater import verificar_actualizacion
@@ -52,9 +54,6 @@ def main():
         logger.exception("Error al iniciar scheduler")
 
     # 5. Levantar la interfaz
-    app = QApplication(sys.argv)
-    app.setApplicationName("GymManager")
-
     def abrir_main(profesor):
         global main_window
         main_window = MainWindow(profesor)

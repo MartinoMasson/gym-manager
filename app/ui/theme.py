@@ -40,7 +40,7 @@ class Theme(QObject):
 
     def __init__(self):
         super().__init__()
-        self._current = self.DARK
+        self._current = self.LIGHT
 
     def toggle(self):
         self._current = self.LIGHT if self._current == self.DARK else self.DARK
