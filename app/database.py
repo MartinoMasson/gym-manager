@@ -2,10 +2,12 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from dotenv import load_dotenv
+from app.utils.paths import get_base_dir
 
-load_dotenv()
+load_dotenv(os.path.join(get_base_dir(), ".env"))
 
-LOCAL_URL = os.getenv("LOCAL_DATABASE_URL")
+LOCAL_DB_PATH = os.path.join(get_base_dir(), "gymmanager.db")
+LOCAL_URL = f"sqlite:///{LOCAL_DB_PATH}"
 REMOTE_URL = os.getenv("REMOTE_DATABASE_URL")
 
 local_engine = create_engine(LOCAL_URL, connect_args={"check_same_thread": False})

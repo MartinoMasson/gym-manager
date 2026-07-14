@@ -1,28 +1,25 @@
-import os
-import sys
+import os, sys
 from logging.config import fileConfig
 from sqlalchemy import create_engine, pool
 from alembic import context
 from dotenv import load_dotenv
 
-load_dotenv()
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.utils.paths import get_base_dir
+load_dotenv(os.path.join(get_base_dir(), ".env"))
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-
 from app.database import Base
-from app.models.usuario import Usuario, Profesor, Alumno
-from app.models.evaluacion import Categoria, Pregunta, Evaluacion, RespuestaEvaluacion
-
 target_metadata = Base.metadata
 
-DATABASE_URL = os.getenv("LOCAL_DATABASE_URL")
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+LOCAL_DB_PATH = os.path.join(get_base_dir(), "gymmanager.db")
+LOCAL_URL = f"sqlite:///{LOCAL_DB_PATH}"
+config.set_main_option("sqlalchemy.url", LOCAL_URL)
 
 
 def run_migrations_offline() -> None:
@@ -33,10 +30,9 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    local_url = os.getenv("LOCAL_DATABASE_URL")
     remote_url = os.getenv("REMOTE_DATABASE_URL")
 
-    for url in filter(None, [local_url, remote_url]):
+    for url in filter(None, [LOCAL_URL, remote_url]):
         connectable = create_engine(url, poolclass=pool.NullPool)
         with connectable.connect() as connection:
             context.configure(connection=connection, target_metadata=target_metadata)

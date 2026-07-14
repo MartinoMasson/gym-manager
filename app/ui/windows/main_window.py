@@ -112,7 +112,7 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(navbar)
         layout.setContentsMargins(24, 0, 24, 0)
 
-        logo = QLabel("💪 GymManager")
+        logo = QLabel("GENNES")
         logo.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         logo.setStyleSheet(f"color: {theme['primario']};")
         layout.addWidget(logo)
@@ -126,12 +126,16 @@ class MainWindow(QMainWindow):
         btn_crear.setStyleSheet(f"""
             QPushButton {{
                 background-color: {theme['primario']};
-                color: white;
+                color: {theme['oscuro']};
                 border: none;
                 border-radius: 8px;
                 padding: 0 16px;
             }}
-            QPushButton:hover {{ background-color: {theme['secundario']}; }}
+            QPushButton:hover {{ 
+                background-color: {theme['sombra']};
+                color: {theme['claro']};
+                border: 1px solid {theme['primario']};
+            }}
         """)
 
         menu = QMenu(self)
@@ -177,13 +181,17 @@ class MainWindow(QMainWindow):
         btn_cerrar.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_cerrar.setStyleSheet(f"""
             QPushButton {{
-                background-color: transparent;
-                color: {theme['gris']};
-                border: 1px solid {theme['gris']};
+                background-color: {theme['primario']}; 
+                color: {theme['oscuro']}; 
+                border-color: 1px solid {theme['oscuro']}; 
                 border-radius: 8px;
                 padding: 0 12px;
             }}
-            QPushButton:hover {{ color: white; border-color: {theme['claro']}; background-color: {theme['primario']}; }}
+            QPushButton:hover {{ 
+                background-color: {theme['secundario']};
+                color: {theme['claro']};
+                border:  1px solid {theme['primario']};
+            }}
         """)
         btn_cerrar.clicked.connect(self._cerrar_sesion)
         layout.addWidget(btn_cerrar)

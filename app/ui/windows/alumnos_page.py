@@ -73,7 +73,7 @@ class AlumnoCard(QFrame):
         dias_texto = self._get_dias()
         dias = QLabel(dias_texto or "Sin días")
         dias.setFont(QFont("Arial", 10))
-        dias.setStyleSheet(f"color: {theme['secundario']}; border: none;")
+        dias.setStyleSheet(f"color: {theme['claro']}; border: none;")
         dias.setFixedWidth(200)
         layout.addWidget(dias)
 
@@ -93,13 +93,13 @@ class AlumnoCard(QFrame):
         btn_eval.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
-                color: {theme['secundario']};
+                color: {theme['claro']};
                 border: 1px solid {theme['secundario']};
                 border-radius: 6px;
             }}
             QPushButton:hover {{
                 background-color: {theme['secundario']};
-                color: white;
+                color: {theme['claro']};
             }}
         """)
         btn_eval.clicked.connect(lambda: self.ver_evaluaciones.emit(self.alumno))
