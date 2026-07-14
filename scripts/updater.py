@@ -27,19 +27,41 @@ def _version_tuple(v: str) -> tuple:
     return tuple(int(x) for x in v.split("."))
 
 
+API_URL_ALL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases"
+
+
 def obtener_ultimo_release():
-    """Devuelve (tag, url_exe, nombre_exe) del último release, o None si falla."""
+    """
+    Trae todos los releases publicados (no drafts, no prereleases) y
+    devuelve el de mayor versión semántica según el tag — no depende
+    de 'latest' de GitHub, que se basa en fecha de publicación y no
+    en el tag más alto.
+    """
     try:
-        resp = requests.get(API_URL, timeout=5)
+        resp = requests.get(API_URL_ALL, timeout=5)
         resp.raise_for_status()
-        data = resp.json()
-        tag = data["tag_name"]
-        assets = data.get("assets", [])
+        releases = [
+            r for r in resp.json()
+            if not r.get("draft") and not r.get("prerelease")
+        ]
+        if not releases:
+            return None
+
+        def tag_key(r):
+            try:
+                return _version_tuple(r["tag_name"])
+            except ValueError:
+                return (0, 0, 0)
+
+        mejor = max(releases, key=tag_key)
+
+        assets = mejor.get("assets", [])
         exe_asset = next((a for a in assets if a["name"].lower().endswith(".exe")), None)
         if not exe_asset:
-            logger.warning("[UPDATER] El release no tiene un .exe adjunto")
+            logger.warning("[UPDATER] El release más reciente no tiene un .exe adjunto")
             return None
-        return tag, exe_asset["browser_download_url"], exe_asset["name"]
+
+        return mejor["tag_name"], exe_asset["browser_download_url"], exe_asset["name"]
     except Exception:
         logger.exception("[UPDATER] Error al consultar GitHub Releases")
         return None
