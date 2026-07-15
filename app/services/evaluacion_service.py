@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
-from app.models.evaluacion import Evaluacion, RespuestaEvaluacion
+from app.models.evaluacion import Evaluacion, RespuestaEvaluacion, Pregunta
 from app.services.dtos import CrearEvaluacionDTO, RespuestaDTO
 import logging
 
@@ -161,3 +161,36 @@ class EvaluacionService:
         except Exception:
             self.logger.exception("Error al obtener la última evaluación")
             return None
+        
+    def listar_evaluaciones(self, alumno_id: uuid.UUID) -> list[Evaluacion]:
+        try:
+            ultimas = (
+                self.session.query(Evaluacion)
+                .filter(Evaluacion.alumno_id == alumno_id)
+                .order_by(Evaluacion.fecha.desc(), Evaluacion.created_at.desc())
+                .limit(3)
+                .all()
+            )
+
+            primera = (
+                self.session.query(Evaluacion)
+                .filter(Evaluacion.alumno_id == alumno_id)
+                .order_by(Evaluacion.fecha.asc(), Evaluacion.created_at.asc())
+                .first()
+            )
+
+            if primera and primera not in ultimas:
+                ultimas.append(primera)
+            
+            return ultimas
+        except Exception:
+            self.logger.exception("Error al obtener la última evaluación")
+            return None
+        
+    def obtener_preguntas(self) -> list[Pregunta]:
+        try:
+            preguntas = self.session.query(Pregunta).order_by(Pregunta.categoria_id).all()
+            return preguntas
+        except Exception:
+            self.logger.exception("Error al obtener preguntas")
+            return []

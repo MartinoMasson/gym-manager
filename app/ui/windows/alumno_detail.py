@@ -51,7 +51,8 @@ class AlumnoDetail(QWidget):
         # Reconstruir tab General
         tab_index = self.tabs.currentIndex()
         self.tabs.removeTab(0)
-        self.tabs.insertTab(0, self._tab_general(), "General")
+        if self.alumno:
+            self.tabs.insertTab(0, self._tab_general(), "General")
         self.tabs.setCurrentIndex(tab_index)
         
     def _cargar_alumno(self):
@@ -192,16 +193,16 @@ class AlumnoDetail(QWidget):
         btn_layout.setSpacing(12)
 
         # Rutina
-        btn_rutina = self._btn_menu("🏋️ Rutina", theme['primario'])
-        menu_rutina = self._menu([
-            ("➕ Crear rutina", self._crear_rutina),
-            ("👁 Ver última", self._ver_ultima_rutina),
-        ])
-        btn_rutina.clicked.connect(lambda: menu_rutina.exec(btn_rutina.mapToGlobal(btn_rutina.rect().bottomLeft())))
-        btn_layout.addWidget(btn_rutina)
+        # btn_rutina = self._btn_menu("🏋️ Rutina ▾", theme['primario'], theme['secundario'])
+        # menu_rutina = self._menu([
+        #     ("➕ Crear rutina", self._crear_rutina),
+        #     ("👁 Ver última", self._ver_ultima_rutina),
+        # ])
+        # btn_rutina.clicked.connect(lambda: menu_rutina.exec(btn_rutina.mapToGlobal(btn_rutina.rect().bottomLeft())))
+        # btn_layout.addWidget(btn_rutina)
 
         # Evaluación
-        btn_eval = self._btn_menu("📋 Evaluación", theme['primario'])
+        btn_eval = self._btn_menu("📋 Evaluación ▾", theme['primario'], theme['secundario'] )
         menu_eval = self._menu([
             ("➕ Crear evaluación", self._crear_evaluacion),
             ("👁 Ver última", self._ver_ultima_evaluacion),
@@ -210,16 +211,16 @@ class AlumnoDetail(QWidget):
         btn_layout.addWidget(btn_eval)
 
         # Datos corporales
-        btn_datos = self._btn_menu("📏 Datos corporales", theme['primario'])
+        btn_datos = self._btn_menu("📏 Datos corporales ▾", theme['primario'], theme['secundario'])
         menu_datos = self._menu([
             ("➕ Añadir", self._agregar_datos_corporales),
-            ("📊 Ver historial", self._ver_historial_datos_corporales),
+            # ("📊 Ver historial", self._ver_historial_datos_corporales),
         ])
         btn_datos.clicked.connect(lambda: menu_datos.exec(btn_datos.mapToGlobal(btn_datos.rect().bottomLeft())))
         btn_layout.addWidget(btn_datos)
 
         # Editar
-        btn_editar = self._btn_menu("✏️ Editar", theme['advertencia'])
+        btn_editar = self._btn_menu("✏️ Editar", theme['advertencia'], "#1a1a1a")
         btn_editar.clicked.connect(self._editar_alumno)
         btn_layout.addWidget(btn_editar)
 
@@ -240,15 +241,15 @@ class AlumnoDetail(QWidget):
         layout.addWidget(label)
         return w
 
-    def _btn_menu(self, texto: str, color: str) -> QPushButton:
-        btn = QPushButton(texto + " ▾")
+    def _btn_menu(self, texto: str, color: str, text_color: str) -> QPushButton:
+        btn = QPushButton(texto)
         btn.setFixedHeight(36)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setFont(QFont("Arial", 10))
         btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {color};
-                color: white;
+                color: {text_color};
                 border: none;
                 border-radius: 8px;
                 padding: 0 16px;
@@ -322,20 +323,23 @@ class AlumnoDetail(QWidget):
     
     # ACTION METHODS
     #RUTINA
-    def _crear_rutina(self):
-        print("Crear rutina")
-    def _ver_ultima_rutina(self):
-        print("Ver última rutina")
+    # def _crear_rutina(self):
+    #     print("Crear rutina")
+    # def _ver_ultima_rutina(self):
+    #     print("Ver última rutina")
         
     #EVALUACIOIN
     def _crear_evaluacion(self):
-        print("Crear evaluación")
+        from app.ui.dialogs.crear_evaluacion_dialog import CrearEvaluacionDialog
+        CrearEvaluacionDialog(self.alumno_id, parent=self).exec()
+        
     def _ver_ultima_evaluacion(self):
-        print("Ver última evaluación")
+        from app.ui.dialogs.ver_evaluacion_dialogo import VerEvaluacionDialog
+        VerEvaluacionDialog(self.alumno_id, parent=self).exec()
         
     # DATOS PERSONALES
-    def _ver_historial_datos_corporales(self):
-        print("Ver historial de datos corporales")
+    # def _ver_historial_datos_corporales(self):
+    #     print("Ver historial de datos corporales")
     
     #EDITAR ALUMNO
     def _confirmar_eliminar(self):

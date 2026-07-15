@@ -287,7 +287,6 @@ class CrearAlumnoDialog(QDialog):
         ))
 
         # Agregar días de entrenamiento
-        print("Días seleccionados:", [dia for dia, (cb, horario_input) in self.dias_widgets.items() if cb.isChecked()])
         for dia, (cb, horario_input) in self.dias_widgets.items():
             if cb.isChecked():
                 horario = horario_input.text().strip() or "08:00"

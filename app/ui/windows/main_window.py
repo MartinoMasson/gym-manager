@@ -61,7 +61,6 @@ class MainWindow(QMainWindow):
         self.alumnos_page = AlumnosPage(self.profesor)
         self.alumnos_page.alumno_seleccionado.connect(self._abrir_alumno)
         self.tabs.addTab(self.alumnos_page, "👥 Alumnos")
-        self.tabs.addTab(self._placeholder("Evaluaciones"), "📋 Evaluaciones")
 
         layout.addWidget(self.tabs)
 
@@ -119,82 +118,113 @@ class MainWindow(QMainWindow):
 
         layout.addSpacing(24)
 
-        btn_crear = QPushButton("+ Crear ▾")
-        btn_crear.setFont(QFont("Arial", 11))
-        btn_crear.setFixedHeight(34)
-        btn_crear.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_crear.setStyleSheet(f"""
+        botones_crear_layout = QHBoxLayout()
+        botones_crear_layout.setSpacing(10)
+
+        estilo_btn_accion = f"""
             QPushButton {{
-                background-color: {theme['primario']};
-                color: {theme['oscuro']};
-                border: none;
-                border-radius: 8px;
-                padding: 0 16px;
-            }}
-            QPushButton:hover {{ 
-                background-color: {theme['sombra']};
+                background-color: {theme['secundario']};
                 color: {theme['claro']};
                 border: 1px solid {theme['primario']};
-            }}
-        """)
-
-        menu = QMenu(self)
-        menu.setStyleSheet(f"""
-            QMenu {{
-                background-color: {theme['tarjeta']};
-                color: {theme['claro']};
-                border: 1px solid #2d2d5e;
                 border-radius: 8px;
-                padding: 4px;
+                padding: 0 4px;
+                font-size: 11px;
             }}
-            QMenu::item {{ padding: 8px 20px; border-radius: 6px; }}
-            QMenu::item:selected {{ background-color: {theme['primario']}; color: white; }}
-        """)
-        menu.addAction("👤  Nuevo alumno", self._crear_alumno)
-        if self.profesor.jefe:
-            menu.addAction("🧑‍🏫  Nuevo profesor", self._crear_profesor)
-        menu.addSeparator()
-        menu.addAction("📋  Nueva evaluación", self._crear_evaluacion)
-        btn_crear.clicked.connect(lambda: menu.exec(btn_crear.mapToGlobal(btn_crear.rect().bottomLeft())))
-        layout.addWidget(btn_crear)
+            QPushButton:hover {{
+                background-color: {theme['primario']};
+                color: {theme['oscuro']};
+            }}
+        """
 
+        btn_nuevo_alumno = QPushButton("👤  Nuevo alumno")
+        btn_nuevo_alumno.setFixedHeight(34)
+        btn_nuevo_alumno.setFont(QFont("Arial", 11))
+        btn_nuevo_alumno.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_nuevo_alumno.setStyleSheet(estilo_btn_accion)
+        btn_nuevo_alumno.clicked.connect(self._crear_alumno)
+        botones_crear_layout.addWidget(btn_nuevo_alumno)
+
+        if self.profesor.jefe:
+            btn_nuevo_profesor = QPushButton("🧑‍🏫  Nuevo profesor")
+            btn_nuevo_profesor.setFixedHeight(34)
+            btn_nuevo_profesor.setFont(QFont("Arial", 11))
+            btn_nuevo_profesor.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn_nuevo_profesor.setStyleSheet(estilo_btn_accion)
+            btn_nuevo_profesor.clicked.connect(self._crear_profesor)
+            botones_crear_layout.addWidget(btn_nuevo_profesor)
+
+        btn_nueva_evaluacion = QPushButton("📋  Nueva evaluación")
+        btn_nueva_evaluacion.setFixedHeight(34)
+        btn_nueva_evaluacion.setFont(QFont("Arial", 11))
+        btn_nueva_evaluacion.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_nueva_evaluacion.setStyleSheet(estilo_btn_accion)
+        btn_nueva_evaluacion.clicked.connect(self._crear_evaluacion)
+        botones_crear_layout.addWidget(btn_nueva_evaluacion)
+        
+        # PRONTA INCORPORACION DE NUEVA RUTINA
+        # btn_nueva_rutina = QPushButton("💪  Nueva rutina")
+        # btn_nueva_rutina.setFixedHeight(34)
+        # btn_nueva_rutina.setFont(QFont("Arial", 11))
+        # btn_nueva_rutina.setCursor(Qt.CursorShape.PointingHandCursor)
+        # btn_nueva_rutina.setStyleSheet(estilo_btn_accion)
+        # btn_nueva_rutina.clicked.connect(self._crear_evaluacion)  # Cambiar a la función correspondiente para crear rutina
+        # botones_crear_layout.addWidget(btn_nueva_rutina)
+
+        layout.addLayout(botones_crear_layout)
+        
         layout.addStretch()
 
         iniciales = self._get_iniciales(self.profesor.nombre)
-        perfil = QLabel(iniciales)
-        perfil.setFixedSize(36, 36)
-        perfil.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        perfil.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        perfil.setStyleSheet(f"background-color: {theme['acento']}; color: white; border-radius: 18px;")
-        layout.addWidget(perfil)
+        perfil_btn = QPushButton(iniciales)
+        perfil_btn.setFixedSize(36, 36)
+        perfil_btn.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        perfil_btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        nombre_label = QLabel(self.profesor.nombre.split()[0])
-        nombre_label.setFont(QFont("Arial", 11))
-        nombre_label.setStyleSheet(f"color: {theme['claro']};")
-        layout.addWidget(nombre_label)
+        random_color_index = hash(self.profesor.nombre) % len(theme['perfiles'])
+        color_perfil = theme['perfiles'][random_color_index]
 
-        layout.addSpacing(16)
-
-        btn_cerrar = QPushButton("Cerrar sesión")
-        btn_cerrar.setFont(QFont("Arial", 10))
-        btn_cerrar.setFixedHeight(32)
-        btn_cerrar.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_cerrar.setStyleSheet(f"""
+        perfil_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {theme['primario']}; 
-                color: {theme['oscuro']}; 
-                border-color: 1px solid {theme['oscuro']}; 
-                border-radius: 8px;
-                padding: 0 12px;
+                background-color: {color_perfil};
+                color: {theme['oscuro']};
+                border: none;
+                border-radius: 18px;
             }}
-            QPushButton:hover {{ 
-                background-color: {theme['secundario']};
-                color: {theme['claro']};
-                border:  1px solid {theme['primario']};
+            QPushButton::menu-indicator {{
+                image: none;
+                width: 0;
             }}
         """)
-        btn_cerrar.clicked.connect(self._cerrar_sesion)
-        layout.addWidget(btn_cerrar)
+
+        menu_perfil = QMenu(perfil_btn)
+        menu_perfil.setStyleSheet(f"""
+            QMenu {{
+                background-color: {theme['tarjeta']};
+                color: {theme['claro']};
+                border: 1px solid {theme['borde']};
+                border-radius: 8px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 8px 20px;
+                border-radius: 6px;
+            }}
+            QMenu::item:selected {{
+                background-color: {theme['primario']};
+                color: {theme['oscuro']};
+            }}
+            QMenu::separator {{
+                height: 1px;
+                background-color: {theme['borde']};
+                margin: 4px 8px;
+            }}
+        """)
+        # menu_perfil.addAction("👤  Mi perfil", self._ver_perfil)
+        # menu_perfil.addSeparator()
+        menu_perfil.addAction("🚪  Cerrar sesión", self._cerrar_sesion)
+
+        perfil_btn.setMenu(menu_perfil)
+        layout.addWidget(perfil_btn)
 
         return navbar
 
@@ -232,7 +262,11 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     def _crear_evaluacion(self):
-        pass
+        from app.ui.dialogs.crear_evaluacion_dialog import CrearEvaluacionDialog
+        CrearEvaluacionDialog(parent=self).exec()
+
+    # def _ver_perfil(self):
+    #     print("Ver perfil del profesor")
 
     def _cerrar_sesion(self):
         from app.ui.windows.login_window import LoginWindow
@@ -244,14 +278,3 @@ class MainWindow(QMainWindow):
     def _reabrir(self, profesor):
         self.__init__(profesor)
         self.show()
-
-    def _placeholder(self, nombre: str) -> QWidget:
-        w = QWidget()
-        layout = QVBoxLayout(w)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label = QLabel(f"{nombre}\n(en construcción)")
-        label.setFont(QFont("Arial", 16))
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet(f"color: {theme['gris']};")
-        layout.addWidget(label)
-        return w

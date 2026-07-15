@@ -9,14 +9,8 @@ from PyQt6.QtGui import QFont, QColor, QPainter, QBrush
 from app.database import LocalSession
 from app.services.usuario_service import UsuarioService
 from app.models.usuario import Profesor
-from app.database import get_sessions
 
 from app.ui.theme import theme
-
-AVATAR_COLORS = [
-    '#6366f1', '#8b5cf6', '#10b981',
-    '#f59e0b', '#06b6d4', '#ec4899',
-]
 
 
 class AvatarWidget(QWidget):
@@ -172,7 +166,7 @@ class LoginWindow(QWidget):
         local.close()
 
         for i, profesor in enumerate(profesores):
-            color = AVATAR_COLORS[i % len(AVATAR_COLORS)]
+            color = theme["perfiles"][i % len(theme["perfiles"])]
             avatar = AvatarWidget(profesor, color)
             avatar.clicked.connect(lambda p=profesor: self._seleccionar(p))
             self.avatares_layout.addWidget(avatar)

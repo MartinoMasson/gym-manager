@@ -5,38 +5,45 @@ class Theme(QObject):
     theme_changed = pyqtSignal()
 
     DARK = {
-        'primario': '#e5e5e5',      # acento claro, ya NO igual a fondo
+        'primario': '#e5e5e5',      
         'secundario': '#2a2a2a',
         'exito': '#10b981',
         'advertencia': '#f59e0b',
         'peligro': '#ef4444',
         'info': '#06b6d4',
-        'oscuro': '#121212',        # fondo principal (no negro puro, menos duro)
-        'claro': '#f2f2f2',         # texto principal
-        'gris': '#8a8a8a',          # texto secundario / placeholders
-        'tarjeta': '#1c1c1c',       # fondo de frames/cards
+        'oscuro': '#121212',        
+        'claro': '#f2f2f2',         
+        'gris': '#8a8a8a',          
+        'tarjeta': '#1c1c1c',       
         'acento': '#e5e5e5',
         'borde': '#3a3a3a',
-        'texto_boton': '#121212',  # texto sobre botones (contrasta con 'primario')
+        'texto_boton': '#121212',
         'sombra': 'rgba(0, 0, 0, 0.4)',
+        'amarillo': '#facc15',
     }
 
     LIGHT = {
-        'primario': '#1a1a1a',      # acento oscuro, ya NO igual a fondo
+        'primario': '#1a1a1a',    
         'secundario': '#e0e0e0',
         'exito': '#10b981',
         'advertencia': '#f59e0b',
         'peligro': '#ef4444',
         'info': '#06b6d4',
-        'oscuro': '#fafafa',        # fondo principal (no blanco puro)
-        'claro': '#1a1a1a',         # texto principal
+        'oscuro': '#fafafa',        
+        'claro': '#1a1a1a',         
         'gris': '#767676',
         'tarjeta': '#ffffff',
         'acento': '#1a1a1a',
         'borde': '#dcdcdc',
         'texto_boton': '#fafafa',
         'sombra': 'rgba(0, 0, 0, 0.12)',
+        'amarillo': '#facc15',
+        "perfiles":['#6366f1', '#8b5cf6', '#10b981',
+                    '#f59e0b', '#06b6d4', '#ec4899',
+                    ]
     }
+    
+    
 
     def __init__(self):
         super().__init__()

@@ -153,7 +153,7 @@ def verificar_actualizacion(preguntar=True):
     hay_update, tag, url = hay_actualizacion()
 
     if not hay_update:
-        print("[UPDATER] La app está al día ✓")
+        print(f"[UPDATER] La app está al día ✓ v{__version__}")
         alembic_upgrade()
         return
 

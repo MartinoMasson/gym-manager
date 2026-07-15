@@ -17,11 +17,11 @@ DIAS = {1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb', 7: 'Dom'}
 
 class AlumnoCard(QFrame):
     clicked = pyqtSignal(object)
-    ver_evaluaciones = pyqtSignal(object)
-    
-    def __init__(self, alumno: Alumno, parent=None):
+
+    def __init__(self, alumno: Alumno, color: str, parent=None):
         super().__init__(parent)
         self.alumno = alumno
+        self.color = color
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedHeight(70)
         self.setStyleSheet(f"""
@@ -48,8 +48,8 @@ class AlumnoCard(QFrame):
         avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
         avatar.setFont(QFont("Arial", 13, QFont.Weight.Bold))
         avatar.setStyleSheet(f"""
-            background-color: {theme['primario']};
-            color: white;
+            background-color: {self.color};
+            color: {theme['oscuro']};
             border-radius: 21px;
             border: none;
         """)
@@ -84,7 +84,8 @@ class AlumnoCard(QFrame):
         edad.setStyleSheet(f"color: {theme['gris']}; border: none;")
         edad.setFixedWidth(60)
         layout.addWidget(edad)
-        
+        layout.addStretch()
+
         # Botón evaluaciones
         btn_eval = QPushButton("📋 Evaluaciones")
         btn_eval.setFixedSize(110, 28)
@@ -102,10 +103,8 @@ class AlumnoCard(QFrame):
                 color: {theme['claro']};
             }}
         """)
-        btn_eval.clicked.connect(lambda: self.ver_evaluaciones.emit(self.alumno))
+        btn_eval.clicked.connect(lambda: self.ver_evaluaciones())
         layout.addWidget(btn_eval)
-
-        layout.addStretch()
 
         # Estado
         activo = self.alumno.estado == 1
@@ -139,6 +138,10 @@ class AlumnoCard(QFrame):
 
     def mousePressEvent(self, event):
         self.clicked.emit(self.alumno)
+        
+    def ver_evaluaciones(self):
+        from app.ui.dialogs.ver_evaluacion_dialogo import VerEvaluacionDialog
+        VerEvaluacionDialog(self.alumno.id, parent=self).exec()
 
 
 class AlumnosPage(QWidget):
@@ -293,10 +296,10 @@ class AlumnosPage(QWidget):
             if w:
                 w.deleteLater()
 
-        for alumno in alumnos:
-            card = AlumnoCard(alumno)
+        for i, alumno in enumerate(alumnos):
+            color = theme["perfiles"][i % len(theme["perfiles"])]
+            card = AlumnoCard(alumno,color)
             card.clicked.connect(self.alumno_seleccionado.emit)
-            card.ver_evaluaciones.connect(self.alumno_seleccionado.emit) 
             self.lista_layout.addWidget(card)
 
         total = len(alumnos)
