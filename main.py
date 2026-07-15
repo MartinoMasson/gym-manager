@@ -72,6 +72,6 @@ def main():
 
     sys.exit(app.exec())
 
-
+# print("Eliminar terminar al abrir.exe")
 if __name__ == "__main__":
     main()

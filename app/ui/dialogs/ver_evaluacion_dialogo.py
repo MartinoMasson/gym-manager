@@ -135,7 +135,7 @@ class VerEvaluacionDialog(QDialog):
                 padding: 9px 20px;
                 font-weight: 600;
             }}
-            QPushButton#btnEditar,#btnEliminar {{
+            QPushButton#btnEditar,QPushButton#btnEliminar {{
                 background-color: {theme['acento']};
                 color: {theme['texto_boton']};
                 border: none;
@@ -146,7 +146,7 @@ class VerEvaluacionDialog(QDialog):
             QPushButton#btnEliminar:hover {{
                 background-color: {theme['peligro']};
             }}
-            QPushButton#btnEditar:disabled {{
+            QPushButton#btnEditar:disabled, QPushButton#btnEliminar:disabled {{
                 background-color: {theme['borde']};
                 color: {theme['gris']};
             }}
@@ -281,6 +281,7 @@ class VerEvaluacionDialog(QDialog):
             self.combo_evaluaciones.addItem("Sin evaluaciones", userData=None)
             self.combo_evaluaciones.blockSignals(False)
             # self.btn_editar.setEnabled(False)
+            self.btn_eliminar.setEnabled(False)
             self._limpiar_detalle()
             self._mostrar_estado_vacio()
             return
@@ -292,6 +293,7 @@ class VerEvaluacionDialog(QDialog):
         self.combo_evaluaciones.setCurrentIndex(0)
         self.combo_evaluaciones.blockSignals(False)
         # self.btn_editar.setEnabled(True)
+        self.btn_eliminar.setEnabled(True)
         self._mostrar_evaluacion_seleccionada()
 
     def _mostrar_evaluacion_seleccionada(self):
