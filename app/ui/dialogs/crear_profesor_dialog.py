@@ -8,10 +8,9 @@ from PyQt6.QtGui import QFont
 from app.database import LocalSession
 from app.services.usuario_service import UsuarioService
 from app.services.dtos import CrearProfesorDTO
-from app.database import get_sessions
+from app.state import state
 
 from app.ui.theme import theme
-
 
 class CrearProfesorDialog(QDialog):
     def __init__(self, parent=None):
@@ -31,15 +30,34 @@ class CrearProfesorDialog(QDialog):
         titulo.setStyleSheet(f"color: {theme['claro']};")
         layout.addWidget(titulo)
 
-        # Nombre
+        # Nombre y Apellido (uno al lado del otro)
+        nombre_apellido_layout = QHBoxLayout()
+        nombre_apellido_layout.setSpacing(12)  # espacio entre las dos columnas
+
+        nombre_col = QVBoxLayout()
+        nombre_col.setSpacing(4)  # espacio entre label e input
         self.input_nombre = self._input("Nombre completo")
-        layout.addWidget(QLabel("Nombre:", styleSheet=f"color: {theme['gris']}; font-size: 12px;"))
-        layout.addWidget(self.input_nombre)
+        nombre_col.addWidget(QLabel("Nombre:", styleSheet=f"color: {theme['gris']}; font-size: 12px;"))
+        nombre_col.addWidget(self.input_nombre)
+
+        apellido_col = QVBoxLayout()
+        apellido_col.setSpacing(4)
+        self.input_apellido = self._input("Apellido completo")
+        apellido_col.addWidget(QLabel("Apellido:", styleSheet=f"color: {theme['gris']}; font-size: 12px;"))
+        apellido_col.addWidget(self.input_apellido)
+
+        nombre_apellido_layout.addLayout(nombre_col)
+        nombre_apellido_layout.addLayout(apellido_col)
+
+        layout.addLayout(nombre_apellido_layout)
 
         # Teléfono
+        tel_col = QVBoxLayout()
+        tel_col.setSpacing(4)
         self.input_tel = self._input("Teléfono (opcional)")
-        layout.addWidget(QLabel("Teléfono:", styleSheet=f"color: {theme['gris']}; font-size: 12px;"))
-        layout.addWidget(self.input_tel)
+        tel_col.addWidget(QLabel("Teléfono:", styleSheet=f"color: {theme['gris']}; font-size: 12px;"))
+        tel_col.addWidget(self.input_tel)
+        layout.addLayout(tel_col)
 
         # Jefe
         self.check_jefe = QCheckBox("Es jefe")
@@ -53,6 +71,10 @@ class CrearProfesorDialog(QDialog):
                 height: 14px;
                 border: 1px solid black;
                 border-radius: 3px;
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: {theme['primario']};
+                border: 1px solid {theme['claro']};
             }}
         """)
         layout.addWidget(self.check_jefe)
@@ -109,10 +131,21 @@ class CrearProfesorDialog(QDialog):
         return btn
 
     def _crear(self):
+        from app.models.usuario import Usuario
+        
         nombre = self.input_nombre.text().strip()
-        if not nombre:
-            QMessageBox.warning(self, "Error", "El nombre es obligatorio.")
+        apellido = self.input_apellido.text().strip()
+        base_user = f"{apellido[:1]}{nombre}".lower()
+        if not nombre or not apellido:
+            QMessageBox.warning(self, "Error", "El nombre y apellido son obligatorios.")
             return
+        
+        _s = LocalSession()
+        usuario = base_user
+        contador = 2
+        while _s.query(Usuario).filter(Usuario.user == usuario).first():
+            usuario = f"{base_user}{contador}"
+            contador += 1
 
         from app.database import RemoteSession
         local = LocalSession()
@@ -120,8 +153,16 @@ class CrearProfesorDialog(QDialog):
         service = UsuarioService(sessions)
         service.crear_profesor(CrearProfesorDTO(
             nombre=nombre,
+            apellido=apellido,
+            user=usuario,
             tel=self.input_tel.text().strip() or None,
             jefe=self.check_jefe.isChecked(),
         ))
         local.close()
-        self.accept()
+
+        state.cargar_profesores()
+        self.input_nombre.clear()
+        self.input_apellido.clear()
+        self.input_tel.clear()
+        self.check_jefe.setChecked(False)
+        # self.accept()

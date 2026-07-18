@@ -1,11 +1,12 @@
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, QComboBox,
+    QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, QComboBox,
     QScrollArea, QWidget, QPushButton, QMessageBox, QFrame, QGridLayout,
     QSizePolicy
 )
 import math
 from PyQt6.QtCore import Qt
 import uuid
+from app.services.evaluacion_service import EvaluacionService
 from app.utils.tipo_texto import capitalizar_palabras
 from app.ui.theme import theme
 from app.state import state
@@ -14,31 +15,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class VerEvaluacionDialog(QDialog):
+class EvaluacionesTab(QWidget):
     COLUMNAS = 3
 
     def __init__(self, alumno_id: uuid.UUID, parent=None):
         super().__init__(parent)
         self.alumno_id = alumno_id
         self.evaluaciones: list = []
-
-        self.setWindowTitle("Evaluación")
-        self.setMinimumWidth(1200)
-        self.setMinimumHeight(700)
         self._aplicar_estilos()
         self._construir_ui()
 
         state.evaluaciones_actualizadas.connect(self._on_evaluaciones_actualizadas)
         self._cargar_evaluaciones()
 
-    def closeEvent(self, event):
-        state.evaluaciones_actualizadas.disconnect(self._on_evaluaciones_actualizadas)
-        super().closeEvent(event)
-
     def _aplicar_estilos(self):
         self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {theme['oscuro']};
+            QWidget {{
+                background-color: {theme['tarjeta']};
                 color: {theme['primario']};
             }}
             QComboBox {{
@@ -84,18 +77,13 @@ class VerEvaluacionDialog(QDialog):
                 font-size: 12px;
             }}
             QFrame#headerCard {{
-                background-color: {theme['tarjeta']};
+                background-color: {theme['oscuro']};
                 border: 1px solid {theme['borde']};
                 border-radius: 10px;
             }}
             QFrame#separador {{
                 background-color: {theme['borde']};
                 border: none;
-            }}
-            QFrame#panelRespuestas {{
-                background-color: {theme['tarjeta']};
-                border: 1px solid {theme['borde']};
-                border-radius: 12px;
             }}
             QScrollArea {{
                 border: none;
@@ -134,18 +122,18 @@ class VerEvaluacionDialog(QDialog):
                 padding: 9px 20px;
                 font-weight: 600;
             }}
-            QPushButton#btnEditar,QPushButton#btnEliminar {{
+            QPushButton#btnEliminar, QPushButton#btnEditar {{
                 background-color: {theme['acento']};
                 color: {theme['texto_boton']};
                 border: none;
             }}
             QPushButton#btnEditar:hover {{
-                background-color: {theme['exito']};
+                background-color: {theme['advertencia']};
             }}
             QPushButton#btnEliminar:hover {{
                 background-color: {theme['peligro']};
             }}
-            QPushButton#btnEditar:disabled, QPushButton#btnEliminar:disabled {{
+            QPushButton#btnEliminar:disabled, QPushButton#btnEditar:disabled {{
                 background-color: {theme['borde']};
                 color: {theme['gris']};
             }}
@@ -158,29 +146,12 @@ class VerEvaluacionDialog(QDialog):
                 border: 1px solid {theme['primario']};
                 background-color: {theme['secundario']};
             }}
-            QPushButton#btnCerrar {{
-                background-color: transparent;
-                color: {theme['gris']};
-                border: 1px solid {theme['borde']};
-            }}
-            QPushButton#btnCerrar:hover {{
-                color: {theme['primario']};
-                border: 1px solid {theme['primario']};
-            }}
         """)
 
     def _construir_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(18)
-
-        # --- Encabezado con selector ---
-        header_titulo = QLabel("Evaluaciones")
-        fuente_header = header_titulo.font()
-        fuente_header.setBold(True)
-        fuente_header.setPointSize(fuente_header.pointSize() + 5)
-        header_titulo.setFont(fuente_header)
-        layout.addWidget(header_titulo)
 
         card = QFrame()
         card.setObjectName("headerCard")
@@ -217,7 +188,6 @@ class VerEvaluacionDialog(QDialog):
 
         layout.addWidget(card)
 
-        # --- Sección respuestas ---
         respuestas_header = QLabel("Respuestas")
         fuente_resp = respuestas_header.font()
         fuente_resp.setBold(True)
@@ -236,7 +206,6 @@ class VerEvaluacionDialog(QDialog):
         scroll.setWidget(self.respuestas_container)
         layout.addWidget(scroll, stretch=1)
 
-        # --- Botonera ---
         botones = QHBoxLayout()
         botones.setSpacing(10)
         self.btn_nueva = QPushButton("+  Nueva evaluación")
@@ -245,22 +214,17 @@ class VerEvaluacionDialog(QDialog):
         self.btn_editar.setObjectName("btnEditar")
         self.btn_eliminar = QPushButton("Eliminar")
         self.btn_eliminar.setObjectName("btnEliminar")
-        self.btn_cerrar = QPushButton("Cerrar")
-        self.btn_cerrar.setObjectName("btnCerrar")
-        
+
         self.btn_nueva.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_editar.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_eliminar.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_cerrar.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self.btn_nueva.clicked.connect(self._crear_nueva)
         self.btn_editar.clicked.connect(self._editar_actual)
         self.btn_eliminar.clicked.connect(self._eliminar_actual)
-        self.btn_cerrar.clicked.connect(self.reject)
 
         botones.addWidget(self.btn_nueva)
         botones.addStretch()
-        botones.addWidget(self.btn_cerrar)
         botones.addWidget(self.btn_editar)
         botones.addWidget(self.btn_eliminar)
         layout.addLayout(botones)
@@ -282,8 +246,8 @@ class VerEvaluacionDialog(QDialog):
         if not self.evaluaciones:
             self.combo_evaluaciones.addItem("Sin evaluaciones", userData=None)
             self.combo_evaluaciones.blockSignals(False)
-            self.btn_editar.setEnabled(False)
             self.btn_eliminar.setEnabled(False)
+            self.btn_editar.setEnabled(False)
             self._limpiar_detalle()
             self._mostrar_estado_vacio()
             return
@@ -294,8 +258,8 @@ class VerEvaluacionDialog(QDialog):
 
         self.combo_evaluaciones.setCurrentIndex(0)
         self.combo_evaluaciones.blockSignals(False)
-        self.btn_editar.setEnabled(True)
         self.btn_eliminar.setEnabled(True)
+        self.btn_editar.setEnabled(True)
         self._mostrar_evaluacion_seleccionada()
 
     def _mostrar_evaluacion_seleccionada(self):
@@ -360,7 +324,7 @@ class VerEvaluacionDialog(QDialog):
         fila.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         fila.setStyleSheet(f"""
             QFrame {{
-                background-color: {theme['tarjeta']};
+                background-color: {theme['oscuro']};
                 border: 1px solid {theme['borde']};
                 border-radius: 8px;
             }}
@@ -504,7 +468,3 @@ class VerEvaluacionDialog(QDialog):
             except Exception:
                 logger.exception("Error al eliminar evaluación")
                 QMessageBox.critical(self, "Error", "No se pudo eliminar la evaluación")
-            finally:
-                local.close()
-                if remote:
-                    remote.close()

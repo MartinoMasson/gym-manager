@@ -41,6 +41,7 @@ class Profesor(Usuario):
     __tablename__ = "profesores"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("usuarios.id"), primary_key=True)
+    apellido: Mapped[str] = mapped_column(String(100), nullable=False)
     jefe: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     alumnos: Mapped[list["Alumno"]] = relationship(
         secondary=cargo_de,

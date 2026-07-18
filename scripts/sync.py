@@ -171,6 +171,11 @@ def sincronizar(verbose=True):
     if RemoteSession is None:
         print("[SYNC] No hay conexión remota configurada. Saltando sync.")
         return
+    
+    inspector = inspect(local_engine)
+    if not inspector.has_table(usuario.Usuario.__table__.name):
+        logger.warning("Base local sin schema. Saltando sync (correr alembic upgrade head primero).")
+        return
 
     remote_session = RemoteSession()
     local_session  = LocalSession()

@@ -161,11 +161,12 @@ class AlumnoDetail(QWidget):
         layout.addLayout(grid)
 
         # Medidas corporales recientes
-        layout.addWidget(self._seccion("Medidas corporales recientes"))
         ultima = sorted(self.alumno.detalles, key=lambda d: d.fecha or 0, reverse=True)
         ultima = ultima[0] if ultima else None
 
         if ultima:
+            # layout.addWidget(self._seccion_con_boton("Medidas corporales recientes", self._mostrar_grafico_medidas))
+            layout.addWidget(self._seccion(" Medidas corporales recientes"))
             grid2 = QGridLayout()
             grid2.setSpacing(12)
             medidas = [
@@ -182,8 +183,7 @@ class AlumnoDetail(QWidget):
                 grid2.addWidget(self._campo_label(label), fila, col * 2)
                 grid2.addWidget(self._campo_valor(valor), fila, col * 2 + 1)
             layout.addLayout(grid2)
-        else:
-            layout.addWidget(QLabel("Sin medidas registradas.", styleSheet=f"color: {theme['gris']};"))
+
 
         layout.addStretch()
 
@@ -202,21 +202,17 @@ class AlumnoDetail(QWidget):
         # btn_layout.addWidget(btn_rutina)
 
         # Evaluación
-        btn_eval = self._btn_menu("📋 Evaluación ▾", theme['primario'], theme['secundario'] )
-        menu_eval = self._menu([
-            ("➕ Crear evaluación", self._crear_evaluacion),
-            ("👁 Ver última", self._ver_ultima_evaluacion),
-        ])
-        btn_eval.clicked.connect(lambda: menu_eval.exec(btn_eval.mapToGlobal(btn_eval.rect().bottomLeft())))
-        btn_layout.addWidget(btn_eval)
+        # btn_eval = self._btn_menu("📋 Evaluación ▾", theme['primario'], theme['secundario'] )
+        # menu_eval = self._menu([
+        #     ("➕ Crear evaluación", self._crear_evaluacion),
+        #     ("👁 Ver última", self._ver_ultima_evaluacion),
+        # ])
+        # btn_eval.clicked.connect(lambda: menu_eval.exec(btn_eval.mapToGlobal(btn_eval.rect().bottomLeft())))
+        # btn_layout.addWidget(btn_eval)
 
         # Datos corporales
-        btn_datos = self._btn_menu("📏 Datos corporales ▾", theme['primario'], theme['secundario'])
-        menu_datos = self._menu([
-            ("➕ Añadir", self._agregar_datos_corporales),
-            # ("📊 Ver historial", self._ver_historial_datos_corporales),
-        ])
-        btn_datos.clicked.connect(lambda: menu_datos.exec(btn_datos.mapToGlobal(btn_datos.rect().bottomLeft())))
+        btn_datos = self._btn_menu("📏 + Datos corporales", theme['primario'], theme['secundario'])
+        btn_datos.clicked.connect(self._agregar_datos_corporales)
         btn_layout.addWidget(btn_datos)
 
         # Editar
@@ -230,16 +226,9 @@ class AlumnoDetail(QWidget):
         return scroll
 
     def _tab_evaluaciones(self) -> QWidget:
-        w = QWidget()
-        w.setStyleSheet(f"background-color: {theme['tarjeta']};")
-        layout = QVBoxLayout(w)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label = QLabel("Evaluaciones\n(en construcción)")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setFont(QFont("Arial", 14))
-        label.setStyleSheet(f"color: {theme['gris']};")
-        layout.addWidget(label)
-        return w
+        from app.ui.widgets.evaluaciones_tab import EvaluacionesTab
+        self._evaluaciones_tab = EvaluacionesTab(self.alumno_id, parent=self)
+        return self._evaluaciones_tab
 
     def _btn_menu(self, texto: str, color: str, text_color: str) -> QPushButton:
         btn = QPushButton(texto)
@@ -292,6 +281,41 @@ class AlumnoDetail(QWidget):
         label.setStyleSheet(f"color: {theme['primario']}; border-bottom: 1px solid {theme['borde']}; padding-bottom: 4px;")
         return label
 
+    def _seccion_con_boton(self, texto: str, on_click_grafico=None) -> QWidget:
+        contenedor = QWidget()
+        fila = QHBoxLayout(contenedor)
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.setSpacing(8)
+
+        label = QLabel(texto)
+        label.setFont(QFont("Arial", 13, QFont.Weight.Bold))
+        label.setStyleSheet(f"color: {theme['primario']}; border-bottom: 1px solid {theme['borde']}; padding-bottom: 4px;")
+        fila.addWidget(label)
+
+        btn_grafico = QPushButton("📈")
+        btn_grafico.setFixedSize(24, 24)
+        btn_grafico.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_grafico.setToolTip("Ver gráfico")
+        btn_grafico.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                border: 1px solid {theme['borde']};
+                border-radius: 12px;
+                font-size: 12px;
+                padding: 0px;
+            }}
+            QPushButton:hover {{
+                border: 1px solid {theme['acento']};
+                background-color: {theme['secundario']};
+            }}
+        """)
+        if on_click_grafico:
+            btn_grafico.clicked.connect(on_click_grafico)
+        fila.addWidget(btn_grafico)
+
+        fila.addStretch()
+        return contenedor
+
     def _campo_label(self, texto: str) -> QLabel:
         l = QLabel(texto + ":")
         l.setFont(QFont("Arial", 10))
@@ -329,16 +353,18 @@ class AlumnoDetail(QWidget):
     #     print("Ver última rutina")
         
     #EVALUACIOIN
-    def _crear_evaluacion(self):
-        from app.ui.dialogs.crear_evaluacion_dialog import CrearEvaluacionDialog
-        CrearEvaluacionDialog(self.alumno_id, parent=self).exec()
+    # def _crear_evaluacion(self):
+    #     from app.ui.dialogs.crear_evaluacion_dialog import CrearEvaluacionDialog
+    #     if CrearEvaluacionDialog(self.alumno_id, parent=self).exec():
+    #         if hasattr(self, "_evaluaciones_tab"):
+    #             self._evaluaciones_tab._cargar_evaluaciones()
         
-    def _ver_ultima_evaluacion(self):
-        from app.ui.dialogs.ver_evaluacion_dialogo import VerEvaluacionDialog
-        VerEvaluacionDialog(self.alumno_id, parent=self).exec()
+    # def _ver_ultima_evaluacion(self):
+    #     from app.ui.dialogs.ver_evaluacion_dialogo import VerEvaluacionDialog
+    #     VerEvaluacionDialog(self.alumno_id, parent=self).exec()
         
     # DATOS PERSONALES
-    # def _ver_historial_datos_corporales(self):
+    # def _mostrar_grafico_medidas(self):
     #     print("Ver historial de datos corporales")
     
     #EDITAR ALUMNO

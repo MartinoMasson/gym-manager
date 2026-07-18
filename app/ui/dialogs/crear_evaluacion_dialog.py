@@ -21,9 +21,11 @@ logger = logging.getLogger(__name__)
 class CrearEvaluacionDialog(QDialog):
     COLUMNAS = 3
 
-    def __init__(self, alumno_id: uuid.UUID = None, parent=None):
+    def __init__(self, alumno_id: uuid.UUID = None, evaluacion=None, parent=None):
         super().__init__(parent)
-        self.alumno_id = alumno_id or None
+        self.evaluacion_editar = evaluacion
+        self.modo_edicion = evaluacion is not None
+        self.alumno_id = alumno_id or (evaluacion.alumno_id if evaluacion else None)
         self.grupos_semaforo: dict[uuid.UUID, QButtonGroup] = {}
         self.comentarios_pregunta: dict[uuid.UUID, QLineEdit] = {}
         self.tipo_pregunta: dict[uuid.UUID, str] = {}
@@ -34,12 +36,32 @@ class CrearEvaluacionDialog(QDialog):
         self.servicio_evaluacion = EvaluacionService(self.sessions)
         self.servicio_usuario = UsuarioService(self.sessions)
 
-        self.setWindowTitle("Nueva evaluación")
+        self.setWindowTitle("Editar evaluación" if self.modo_edicion else "Nueva evaluación")
         self.setMinimumWidth(1200)
         self.setMinimumHeight(700)
         self._aplicar_estilos()
         self._construir_ui()
         self._cargar_preguntas()
+        if self.modo_edicion:
+            self._precargar_datos()
+    
+    def _precargar_datos(self):
+        ev = self.evaluacion_editar
+        self.titulo_edit.setText(ev.titulo)
+        self.fecha_edit.setDate(QDate(ev.fecha.year, ev.fecha.month, ev.fecha.day))
+        self.comentario_edit.setPlainText(ev.comentario or "")
+
+        for respuesta in ev.respuestas:
+            grupo = self.grupos_semaforo.get(respuesta.pregunta_id)
+            if grupo and respuesta.semaforo:
+                for boton in grupo.buttons():
+                    if boton.property("valor_semaforo") == respuesta.semaforo:
+                        boton.setChecked(True)
+                        break
+
+            comentario_edit = self.comentarios_pregunta.get(respuesta.pregunta_id)
+            if comentario_edit and respuesta.comentario:
+                comentario_edit.setText(respuesta.comentario)
 
     def _aplicar_estilos(self):
         self.setStyleSheet(f"""
@@ -341,6 +363,7 @@ class CrearEvaluacionDialog(QDialog):
 
         return celda
 
+    
     def _guardar(self):
         titulo = self.titulo_edit.text().strip()
         if not titulo:
@@ -378,9 +401,17 @@ class CrearEvaluacionDialog(QDialog):
         )
 
         try:
-            self.servicio_evaluacion.crear_evaluacion(dto, respuestas)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"No se pudo crear la evaluación:\n{e}")
+            if self.modo_edicion:
+                self.servicio_evaluacion.editar_evaluacion(self.evaluacion_editar.id, dto, respuestas)
+            else:
+                self.servicio_evaluacion.crear_evaluacion(dto, respuestas)
+        except ValueError as e:
+            QMessageBox.warning(self, "No permitido", str(e))
             return
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo guardar la evaluación:\n{e}")
+            return
+
+        self.accept()
 
         self.accept()

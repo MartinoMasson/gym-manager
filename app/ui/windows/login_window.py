@@ -29,7 +29,7 @@ class AvatarWidget(QWidget):
         layout.setSpacing(12)
 
         # Círculo con iniciales
-        iniciales = self._get_iniciales(profesor.nombre)
+        iniciales = self._get_iniciales(profesor.nombre + " " + profesor.apellido)
         circle = QLabel(iniciales)
         circle.setFixedSize(90, 90)
         circle.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -43,18 +43,17 @@ class AvatarWidget(QWidget):
         """)
         layout.addWidget(circle, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # Nombre
-        nombre = QLabel(profesor.nombre)
-        nombre.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        nombre.setFont(QFont("Arial", 11, QFont.Weight.Bold))
-        nombre.setStyleSheet(f"color: {theme['claro']};")
-        nombre.setWordWrap(True)
-        layout.addWidget(nombre)
+        nombre_completo = QLabel(f"{profesor.nombre}\n{profesor.apellido}")
+        nombre_completo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        nombre_completo.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        nombre_completo.setStyleSheet(f"color: {theme['claro']};")
+        nombre_completo.setWordWrap(True)
+        layout.addWidget(nombre_completo)
 
         # Rol
         rol = QLabel("Jefe" if profesor.jefe else "Profesor")
         rol.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        rol.setFont(QFont("Arial", 9))
+        rol.setFont(QFont("Arial", 7))
         rol.setStyleSheet(f"color: {theme['gris']};")
         layout.addWidget(rol)
 

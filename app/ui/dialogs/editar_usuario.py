@@ -7,11 +7,9 @@ from PyQt6.QtGui import QFont
 
 from app.ui.theme import theme
 
-DIAS = {1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb', 7: 'Dom'}
+DIAS = {1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie'}
 
 class EditarUsuarioDialogBase(QDialog):
-    """Campos comunes: nombre, telefono. Las subclases agregan lo específico."""
-
     def __init__(self, usuario, parent=None):
         super().__init__(parent)
         self.usuario = usuario
@@ -36,10 +34,9 @@ class EditarUsuarioDialogBase(QDialog):
         layout.addWidget(subtitulo)
         layout.addSpacing(14)
 
-        self.input_nombre = self._campo(layout, "Nombre", self.usuario.nombre)
+        self._construir_campos_nombre(layout)
         self.input_tel = self._campo(layout, "Teléfono", self.usuario.tel)
 
-        # Contenedor para lo específico de cada subclase
         self.layout_especifico = QVBoxLayout()
         self.layout_especifico.setSpacing(14)
         layout.addLayout(self.layout_especifico)
@@ -56,6 +53,27 @@ class EditarUsuarioDialogBase(QDialog):
         btn_guardar.clicked.connect(self.accept)
         btn_layout.addWidget(btn_guardar)
         layout.addLayout(btn_layout)
+
+    def _construir_campos_nombre(self, layout):
+        """Hook — por defecto solo Nombre. Las subclases pueden agregar Apellido al lado."""
+        self.input_nombre = self._campo(layout, "Nombre", self.usuario.nombre)
+
+    def _campo_en_fila(self, fila_layout, etiqueta: str, valor: str) -> QLineEdit:
+        """Como _campo pero pensado para ir dentro de un QHBoxLayout (sin addSpacing propio)."""
+        col = QVBoxLayout()
+        col.setSpacing(4)
+
+        label = QLabel(etiqueta)
+        label.setStyleSheet(f"color: {theme['claro']}; font-size: 13px; font-weight: bold; border: none;")
+        col.addWidget(label)
+
+        inp = QLineEdit(valor or "")
+        inp.setFixedHeight(40)
+        inp.setStyleSheet(self._input_style())
+        col.addWidget(inp)
+
+        fila_layout.addLayout(col)
+        return inp
 
     def _campo(self, layout, etiqueta: str, valor: str) -> QLineEdit:
         label = QLabel(etiqueta)
@@ -156,6 +174,14 @@ class EditarUsuarioDialogBase(QDialog):
 
 
 class EditarProfesorDialog(EditarUsuarioDialogBase):
+    def _construir_campos_nombre(self, layout):
+        fila = QHBoxLayout()
+        fila.setSpacing(12)
+        self.input_nombre = self._campo_en_fila(fila, "Nombre", self.usuario.nombre)
+        self.input_apellido = self._campo_en_fila(fila, "Apellido", self.usuario.apellido)
+        layout.addLayout(fila)
+        layout.addSpacing(10)
+
     def _init_ui_especifico(self):
         self.check_jefe = self._checkbox_frame("Es jefe", self.usuario.jefe)
 
@@ -164,6 +190,7 @@ class EditarProfesorDialog(EditarUsuarioDialogBase):
         return ActualizarProfesorDTO(
             profesor_id=self.usuario.id,
             nombre=self.input_nombre.text().strip(),
+            apellido=self.input_apellido.text().strip(),  # antes: self.apellido — bug corregido
             tel=self.input_tel.text().strip(),
             jefe=self.check_jefe.isChecked(),
         )

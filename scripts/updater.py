@@ -11,6 +11,7 @@ import sys
 import subprocess
 import logging
 import requests
+import argparse
 
 from app.version import __version__
 from app.utils.paths import get_resource_path
@@ -137,6 +138,8 @@ def alembic_upgrade():
     print("[UPDATER] Aplicando migraciones de base de datos...")
     cfg = Config(get_resource_path("alembic.ini"))
     cfg.set_main_option("script_location", get_resource_path("migrations"))
+    cfg.cmd_opts = argparse.Namespace(x=["db=local"])
+    
     try:
         command.upgrade(cfg, "head")
         print("[UPDATER] Migraciones aplicadas ✓")

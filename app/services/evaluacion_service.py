@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, timedelta
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from app.models.evaluacion import Evaluacion, RespuestaEvaluacion, Pregunta
 from app.services.dtos import CrearEvaluacionDTO, RespuestaDTO
@@ -101,8 +102,11 @@ class EvaluacionService:
                     s.add(respuesta)
 
             self._commit_all()
-            self.session.refresh(evaluacion_local)
-            return evaluacion_local
+
+            local = self.sessions[0]
+            evaluacion_actualizada = local.get(Evaluacion, evaluacion_id)
+            local.refresh(evaluacion_actualizada)
+            return evaluacion_actualizada
         except Exception:
             self.logger.exception("Error al editar evaluación")
             for s in self.sessions:
@@ -162,10 +166,21 @@ class EvaluacionService:
             self.logger.exception("Error al obtener la última evaluación")
             return None
         
+
     def listar_evaluaciones(self, alumno_id: uuid.UUID) -> list[Evaluacion]:
+        if isinstance(alumno_id, str):
+            alumno_id = uuid.UUID(alumno_id)
+
         try:
+            opciones = (
+                selectinload(Evaluacion.respuestas)
+                .selectinload(RespuestaEvaluacion.pregunta)
+                .selectinload(Pregunta.categoria)
+            )
+
             ultimas = (
                 self.session.query(Evaluacion)
+                .options(opciones)
                 .filter(Evaluacion.alumno_id == alumno_id)
                 .order_by(Evaluacion.fecha.desc(), Evaluacion.created_at.desc())
                 .limit(3)
@@ -174,6 +189,7 @@ class EvaluacionService:
 
             primera = (
                 self.session.query(Evaluacion)
+                .options(opciones)
                 .filter(Evaluacion.alumno_id == alumno_id)
                 .order_by(Evaluacion.fecha.asc(), Evaluacion.created_at.asc())
                 .first()
@@ -181,11 +197,11 @@ class EvaluacionService:
 
             if primera and primera not in ultimas:
                 ultimas.append(primera)
-            
+
             return ultimas
         except Exception:
             self.logger.exception("Error al obtener la última evaluación")
-            return None
+            return []
         
     def obtener_preguntas(self) -> list[Pregunta]:
         try:

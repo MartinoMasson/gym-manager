@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from uuid import UUID
 from datetime import time
@@ -7,6 +7,7 @@ from datetime import time
 @dataclass
 class CrearProfesorDTO:
     nombre: str
+    apellido: str
     jefe: bool = False
     tel: str = None
     user: str = None
@@ -19,6 +20,7 @@ class CrearAlumnoDTO:
     user: str = None
     tel_emergencia: str = None
     fecha_nacimiento: date = None
+    profesor: list[UUID] | None = None
 
 
 @dataclass
@@ -37,14 +39,14 @@ class DetallesAlumnoDTO:
 class CrearEvaluacionDTO:
     alumno_id: UUID          
     titulo: str
-    fecha: date = None
+    fecha: date =  field(default_factory=date.today)
     comentario: str = None
 
 
 @dataclass
 class RespuestaDTO:
     pregunta_id: UUID        
-    semaforo: str = None     # ROJO, AMARILLO, VERDE
+    semaforo: str = None
     comentario: str = None
     
 @dataclass
@@ -65,5 +67,6 @@ class ActualizarAlumnoDTO:
 class ActualizarProfesorDTO:
     profesor_id: UUID
     nombre: str
+    apellido: str
     tel: str
     jefe: bool

@@ -1,1 +1,47 @@
 Generic single-database configuration.
+
+## Aplicación de nuevas migraciones
+
+1. **Generar la migración** (autogenerate corre contra remoto, la fuente de verdad del schema):
+```bash
+   alembic revision --autogenerate -m "Comentario de cambios"
+```
+
+2. **Revisar el archivo generado** antes de aplicar nada. Si contiene `drop_constraint`, `create_foreign_key` o `alter_column`, hay que envolver esas operaciones en `batch_alter_table` por tabla — SQLite no soporta ALTER de constraints fuera de batch mode:
+```python
+   with op.batch_alter_table('nombre_tabla') as batch_op:
+       batch_op.drop_constraint(...)
+       batch_op.create_foreign_key(...)
+```
+   `add_column` / `drop_column` simples no lo requieren, pero envolverlos también es válido.
+
+3. **Aplicar en remoto:**
+```bash
+   alembic upgrade head
+```
+
+4. **Aplicar en local:**
+```bash
+   alembic -x db=local upgrade head
+```
+
+### Troubleshooting
+
+- **`Can't locate revision identified by '<id>'`**: la DB tiene stampeada una revisión cuyo archivo fue borrado/movido. Forzar el puntero a una revisión válida (ignora el historial):
+```bash
+  alembic stamp --purge <revision_id>
+```
+
+- **`duplicate column name`** al aplicar en local: la columna ya existe en SQLite pero `alembic_version` no lo sabe (drift). Marcar como aplicada sin re-ejecutar:
+```bash
+  alembic -x db=local stamp <revision_id>
+```
+
+- **`NotImplementedError: No support for ALTER of constraints in SQLite dialect`**: falta envolver la operación en `batch_alter_table` (ver paso 2).
+
+- **Verificar estado sin aplicar:**
+```bash
+  alembic current              # remoto
+  alembic -x db=local current  # local
+  alembic -x db=local check    # detecta si local está desactualizado
+```

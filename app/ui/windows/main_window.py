@@ -18,6 +18,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1100, 700)
         self.setStyleSheet(f"background-color: {theme['oscuro']};")
         self._tabs_alumnos = {}
+        self._tabs_profesores = {}
         self._build()
 
     def _build(self):
@@ -57,19 +58,35 @@ class MainWindow(QMainWindow):
         """)
 
         # Tabs fijos
-        from app.ui.windows.alumnos_page import AlumnosPage
+        from app.ui.widgets.alumnos_page import AlumnosPage
+        if self.profesor.jefe:
+            from app.ui.widgets.profesores_page import ProfesoresPage
+            self.profesores_page = ProfesoresPage(self.profesor)
+            self.profesores_page.profesor_seleccionado.connect(self._abrir_profesor)
+            self.tabs.addTab(self.profesores_page, "👨‍🏫 Profesores")
+
         self.alumnos_page = AlumnosPage(self.profesor)
         self.alumnos_page.alumno_seleccionado.connect(self._abrir_alumno)
         self.tabs.addTab(self.alumnos_page, "👥 Alumnos")
 
+        self.tabs.setCurrentIndex(1)
         layout.addWidget(self.tabs)
 
+        self.tabs.currentChanged.connect(self._actualizar_visibilidad_nueva_evaluacion)
+        self._actualizar_visibilidad_nueva_evaluacion(self.tabs.currentIndex())
+
+    def _actualizar_visibilidad_nueva_evaluacion(self, index: int):
+        widget_actual = self.tabs.widget(index)
+        lista_de_widgets = [self.profesores_page, self.alumnos_page] if self.profesor.jefe else [self.alumnos_page]
+        es_lista = widget_actual in (lista_de_widgets)
+        self.btn_nueva_evaluacion.setVisible(es_lista)
+        
     def _abrir_alumno(self, alumno):
         if alumno.id in self._tabs_alumnos:
             self.tabs.setCurrentIndex(self._tabs_alumnos[alumno.id])
             return
 
-        from app.ui.windows.alumno_detail import AlumnoDetail
+        from app.ui.widgets.alumno_detail import AlumnoDetail
         detail = AlumnoDetail(alumno)
         detail.eliminar_solicitado.connect(self._cerrar_tab_alumno)
 
@@ -93,6 +110,41 @@ class MainWindow(QMainWindow):
 
         self.tabs.setCurrentIndex(index)
 
+    def _abrir_profesor(self, profesor):
+        if profesor.id in self._tabs_profesores:
+            self.tabs.setCurrentIndex(self._tabs_profesores[profesor.id])
+            return
+
+        from app.ui.widgets.profesor_detail import ProfesorDetail
+        es_perfil_propio = profesor.id == self.profesor.id
+        detail = ProfesorDetail(profesor, es_perfil_propio=es_perfil_propio)
+        detail.eliminar_solicitado.connect(self._cerrar_tab_profesor)
+        if es_perfil_propio:
+            detail.perfil_propio_eliminado.connect(self._cerrar_sesion)
+
+        index = self.tabs.addTab(
+            detail,
+            f"👤 {profesor.nombre.split()[0]}" + (" (Yo)" if es_perfil_propio else "")
+        )
+        self._tabs_profesores[profesor.id] = index
+
+        # Botón X en el tab
+        btn_cerrar = QPushButton("✕")
+        btn_cerrar.setFixedSize(16, 16)
+        btn_cerrar.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {theme['gris']};
+                border: none;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{ color: {theme['claro']}; }}
+        """)
+        btn_cerrar.clicked.connect(lambda: self._cerrar_tab_profesor(profesor.id))
+        self.tabs.tabBar().setTabButton(index, self.tabs.tabBar().ButtonPosition.RightSide, btn_cerrar)
+
+        self.tabs.setCurrentIndex(index)
+        
     def _cerrar_tab_alumno(self, alumno_id):
         index = self._tabs_alumnos.pop(alumno_id, None)
         if index is not None:
@@ -101,6 +153,16 @@ class MainWindow(QMainWindow):
             self._tabs_alumnos = {
                 aid: (i if i < index else i - 1)
                 for aid, i in self._tabs_alumnos.items()
+            }
+            
+    def _cerrar_tab_profesor(self, profesor_id):
+        index = self._tabs_profesores.pop(profesor_id, None)
+        if index is not None:
+            self.tabs.removeTab(index)
+            # Actualizar indices de los tabs restantes
+            self._tabs_profesores = {
+                aid: (i if i < index else i - 1)
+                for aid, i in self._tabs_profesores.items()
             }
 
     def _build_navbar(self) -> QWidget:
@@ -160,6 +222,7 @@ class MainWindow(QMainWindow):
         btn_nueva_evaluacion.setStyleSheet(estilo_btn_accion)
         btn_nueva_evaluacion.clicked.connect(self._crear_evaluacion)
         botones_crear_layout.addWidget(btn_nueva_evaluacion)
+        self.btn_nueva_evaluacion = btn_nueva_evaluacion
         
         # PRONTA INCORPORACION DE NUEVA RUTINA
         # btn_nueva_rutina = QPushButton("💪  Nueva rutina")
@@ -219,8 +282,8 @@ class MainWindow(QMainWindow):
                 margin: 4px 8px;
             }}
         """)
-        # menu_perfil.addAction("👤  Mi perfil", self._ver_perfil)
-        # menu_perfil.addSeparator()
+        menu_perfil.addAction("👤  Mi perfil", self._ver_perfil)
+        menu_perfil.addSeparator()
         menu_perfil.addAction("🚪  Cerrar sesión", self._cerrar_sesion)
 
         perfil_btn.setMenu(menu_perfil)
@@ -265,8 +328,8 @@ class MainWindow(QMainWindow):
         from app.ui.dialogs.crear_evaluacion_dialog import CrearEvaluacionDialog
         CrearEvaluacionDialog(parent=self).exec()
 
-    # def _ver_perfil(self):
-    #     print("Ver perfil del profesor")
+    def _ver_perfil(self):
+        self._abrir_profesor(self.profesor)
 
     def _cerrar_sesion(self):
         from app.ui.windows.login_window import LoginWindow

@@ -10,11 +10,12 @@ from app.database import LocalSession
 from app.services.usuario_service import UsuarioService
 from app.services.dtos import CrearAlumnoDTO, HorarioEntrenamientoDTO
 from app.state import state
+from app.models.usuario import Profesor
 
 from app.ui.theme import theme
 
 DIAS = {1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue',
-        5: 'Vie', 6: 'Sáb', 7: 'Dom'}
+        5: 'Vie'}
 
 
 class CrearAlumnoDialog(QDialog):
@@ -70,6 +71,50 @@ class CrearAlumnoDialog(QDialog):
             grid.addWidget(widget, fila * 2 + 1, col)
 
         layout.addLayout(grid)
+        
+        # Separador
+        layout.addWidget(self._separador())
+
+        # Profesores a cargo
+        layout.addWidget(QLabel(
+            "Profesores a cargo:",
+            styleSheet=f"color: {theme['gris']}; font-size: 12px;"
+        ))
+
+        self.profesores_widgets = {}
+        profesores_row = QHBoxLayout()
+        profesores_row.setSpacing(8)
+
+        _s = LocalSession()
+        profesores = _s.query(Profesor).all()
+        for profesor in profesores:
+            cb = QCheckBox(profesor.nombre)
+            cb.setStyleSheet(f"""
+                QCheckBox {{
+                    color: {theme['gris']};
+                    font-size: 11px;
+                }}
+                QCheckBox::indicator {{
+                    width: 16px;
+                    height: 16px;
+                    border-radius: 8px;
+                    border: 1px solid {theme['borde']};
+                    background: {theme['oscuro']};
+                }}
+                QCheckBox::indicator:checked {{
+                    background: {theme['primario']};
+                    border-color: {theme['primario']};
+                }}
+            """)
+            if profesor.id == self.profesor.id:
+                cb.setChecked(True)
+
+            profesores_row.addWidget(cb)
+            self.profesores_widgets[profesor.id] = cb
+        _s.close()
+        
+        profesores_row.addStretch()
+        layout.addLayout(profesores_row)
 
         # Separador
         layout.addWidget(self._separador())
@@ -261,12 +306,12 @@ class CrearAlumnoDialog(QDialog):
         fecha = self.input_fecha.date().toPyDate()
 
         # Generar username único: rjuan, rjuan2, rjuan3...
-        from app.models.usuario import Usuario as _Usuario
+        from app.models.usuario import Usuario
         base_user = f"{apellido[:1]}{nombre}".lower()
         _s = LocalSession()
         usuario = base_user
         contador = 2
-        while _s.query(_Usuario).filter(_Usuario.user == usuario).first():
+        while _s.query(Usuario).filter(Usuario.user == usuario).first():
             usuario = f"{base_user}{contador}"
             contador += 1
         _s.close()
@@ -276,6 +321,10 @@ class CrearAlumnoDialog(QDialog):
         local = LocalSession()
         remote = RemoteSession() if RemoteSession else None
         sessions = [local, remote] if remote else [local]
+        
+        profesores_ids = [
+            pid for pid, cb in self.profesores_widgets.items() if cb.isChecked()
+        ]
 
         service = UsuarioService(sessions)
         alumno = service.crear_alumno(CrearAlumnoDTO(
@@ -284,6 +333,7 @@ class CrearAlumnoDialog(QDialog):
             tel_emergencia=self.input_tel_emergencia.text().strip() or None,
             user=usuario,
             fecha_nacimiento=fecha,
+            profesor=profesores_ids
         ))
 
         # Agregar días de entrenamiento
@@ -304,8 +354,21 @@ class CrearAlumnoDialog(QDialog):
         alumno_nombre = alumno.nombre
         local.close()
 
-        state.cargar_alumnos()
-        self.accept()
+        state.cargar_alumnos(self.profesor)
+        state.cargar_profesores()
+        # limpieza (eliminar luego)
+        self.input_nombre.clear()
+        self.input_apellido.clear()
+        self.input_fecha.clear()
+        self.input_tel.clear()
+        self.input_tel_emergencia.clear()
+        self.input_fecha.setDate(QDate(2000, 1, 1))
+        for cb, _ in self.dias_widgets.values():
+            cb.setChecked(False)
+        for pid, cb in self.profesores_widgets.items():
+            cb.setChecked(pid == self.profesor.id)
+        self.check_datos_corporales.setChecked(False)
+        # self.accept() descomentar una vez de agregar todos los alumnos, para que no se cierre el diálogo y se pueda agregar otro alumno
 
         # Abrir diálogo de datos corporales si fue marcado
         if self.check_datos_corporales.isChecked():

@@ -153,7 +153,7 @@ class AlumnosPage(QWidget):
         self.setStyleSheet(f"background-color: {theme['oscuro']};")
         self._build()
         state.alumnos_changed.connect(self._filtrar)
-        state.cargar_alumnos()
+        state.cargar_alumnos(profesor=self.profesor)
 
     def _build(self):
         layout = QVBoxLayout(self)
@@ -257,19 +257,6 @@ class AlumnosPage(QWidget):
         self.label_total = QLabel()
         self.label_total.setStyleSheet(f"color: {theme['gris']}; font-size: 11px;")
         layout.addWidget(self.label_total)
-
-    def _cargar_alumnos(self):
-        from sqlalchemy.orm import joinedload
-
-        local = LocalSession()
-        self.todos = (
-            local.query(Alumno)
-            .options(joinedload(Alumno.entrenamientos))
-            .order_by(Alumno.nombre)
-            .all()
-        )
-        local.close()
-        self._filtrar()
     
     def _filtrar(self):
         texto = self.search.text().lower()
