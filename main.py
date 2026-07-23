@@ -7,6 +7,8 @@ from PyQt6.QtWidgets import QApplication
 from app.ui.windows.login_window import LoginWindow
 from app.ui.windows.main_window import MainWindow
 from core.logger import setup_logging
+from app.utils.paths import asegurar_archivos_iniciales
+
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -58,6 +60,7 @@ def iniciar_scheduler():
 
 
 def main():
+    asegurar_archivos_iniciales()
     logger.info("Iniciando GymManager")
     app = QApplication(sys.argv)
     app.setApplicationName("Gennes Gimnasio")
