@@ -139,7 +139,7 @@ class CrearEvaluacionDialog(QDialog):
                 border: 1px solid {theme['primario']};
             }}
         """)
-
+    
     def _construir_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
@@ -195,6 +195,8 @@ class CrearEvaluacionDialog(QDialog):
         botones.addWidget(self.btn_cancelar)
         botones.addWidget(self.btn_guardar)
         layout.addLayout(botones)
+        
+        self._aplicar_estilos()
 
     def _estilizar_calendario(self, calendario):
         calendario.setStyleSheet(f"""
