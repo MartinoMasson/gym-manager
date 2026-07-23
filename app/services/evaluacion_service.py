@@ -204,9 +204,9 @@ class EvaluacionService:
             return []
         
     def obtener_preguntas(self) -> list[Pregunta]:
-        try:
-            preguntas = self.session.query(Pregunta).order_by(Pregunta.categoria_id).all()
-            return preguntas
-        except Exception:
-            self.logger.exception("Error al obtener preguntas")
-            return []
+        return (
+            self.session.query(Pregunta)
+            .options(selectinload(Pregunta.categoria))
+            .order_by(Pregunta.categoria_id)
+            .all()
+        )

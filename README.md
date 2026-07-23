@@ -251,8 +251,8 @@ python scripts/build.py
 - [x] Crear profesor (solo jefes)
 - [x] Agregar medidas corporales desde detalle del alumno
 - [x] Submenús de acción: Rutina, Evaluación, Datos corporales, Editar
-- [ ] Editar alumno (diálogo)
-- [ ] Ver última rutina / evaluación
+- [x] Editar alumno (diálogo)
+- [x] Ver última rutina / evaluación
+- [x] Gestión completa de evaluaciones
 - [ ] Historial de medidas corporales con gráfico
-- [ ] Gestión completa de evaluaciones
 - [ ] Rutinas (diferido)

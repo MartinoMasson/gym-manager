@@ -5,10 +5,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
-from app.database import LocalSession
-from app.services.usuario_service import UsuarioService
 from app.services.dtos import CrearProfesorDTO
 from app.state import state
+
 
 from app.ui.theme import theme
 
@@ -131,8 +130,6 @@ class CrearProfesorDialog(QDialog):
         return btn
 
     def _crear(self):
-        from app.models.usuario import Usuario
-        
         nombre = self.input_nombre.text().strip()
         apellido = self.input_apellido.text().strip()
         base_user = f"{apellido[:1]}{nombre}".lower()
@@ -140,27 +137,23 @@ class CrearProfesorDialog(QDialog):
             QMessageBox.warning(self, "Error", "El nombre y apellido son obligatorios.")
             return
         
-        _s = LocalSession()
-        usuario = base_user
-        contador = 2
-        while _s.query(Usuario).filter(Usuario.user == usuario).first():
-            usuario = f"{base_user}{contador}"
-            contador += 1
-
-        from app.database import RemoteSession
-        local = LocalSession()
-        sessions = [local, RemoteSession()] if RemoteSession else [local]
-        service = UsuarioService(sessions)
-        service.crear_profesor(CrearProfesorDTO(
+        usuario = state.generar_user(base_user)
+        if usuario is None:
+            QMessageBox.critical(self, "Error", "No se pudo generar un usuario único para el profesor.")
+            return
+        
+        profesor_id = state.crear_profesor(CrearProfesorDTO(
             nombre=nombre,
             apellido=apellido,
             user=usuario,
             tel=self.input_tel.text().strip() or None,
             jefe=self.check_jefe.isChecked(),
         ))
-        local.close()
+        if profesor_id is None:
+            QMessageBox.critical(self, "Error", "No se pudo crear el profesor. Intente nuevamente.")
+            return
 
-        state.cargar_profesores()
+        # eliminar lineas 151-156 y descomentar la linea 157 para que se cierre el dialogo al crear un profesor
         self.input_nombre.clear()
         self.input_apellido.clear()
         self.input_tel.clear()

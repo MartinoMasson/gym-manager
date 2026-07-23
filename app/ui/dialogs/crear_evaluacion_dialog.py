@@ -8,11 +8,11 @@ import math
 import uuid
 from app.services.dtos import CrearEvaluacionDTO, RespuestaDTO
 from app.services.evaluacion_service import EvaluacionService
-from app.services.usuario_service import UsuarioService
 from app.utils.tipo_texto import capitalizar_palabras
 from app.ui.theme import theme
 from app.database import LocalSession
-from app.database import RemoteSession
+from app.state import state
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -29,19 +29,15 @@ class CrearEvaluacionDialog(QDialog):
         self.grupos_semaforo: dict[uuid.UUID, QButtonGroup] = {}
         self.comentarios_pregunta: dict[uuid.UUID, QLineEdit] = {}
         self.tipo_pregunta: dict[uuid.UUID, str] = {}
-
-        local = LocalSession()
-        remote = RemoteSession() if RemoteSession else None
-        self.sessions = [local, remote] if remote else [local]
-        self.servicio_evaluacion = EvaluacionService(self.sessions)
-        self.servicio_usuario = UsuarioService(self.sessions)
+        
+        state.alumnos_changed.connect(self._construir_ui)
+        state.preguntas_actualizadas.connect(self._cargar_preguntas)
+        state.cargar_alumnos()
+        state.cargar_preguntas()
 
         self.setWindowTitle("Editar evaluación" if self.modo_edicion else "Nueva evaluación")
         self.setMinimumWidth(1200)
         self.setMinimumHeight(700)
-        self._aplicar_estilos()
-        self._construir_ui()
-        self._cargar_preguntas()
         if self.modo_edicion:
             self._precargar_datos()
     
@@ -160,7 +156,7 @@ class CrearEvaluacionDialog(QDialog):
 
         self.alumno_id_edit = None
         if self.alumno_id is None:
-            alumnos = self.servicio_usuario.listar_alumnos()
+            alumnos = state.get_alumnos()
             self.alumno_id_edit = QComboBox()
             for alumno in alumnos:
                 self.alumno_id_edit.addItem(capitalizar_palabras(alumno.nombre), userData=alumno.id)
@@ -255,16 +251,9 @@ class CrearEvaluacionDialog(QDialog):
         """)
    
     def _cargar_preguntas(self):
-        try:
-            preguntas = self.servicio_evaluacion.obtener_preguntas()
-        except Exception:
-            logger.exception("Error al cargar preguntas")
-            QMessageBox.critical(self, "Error", "No se pudieron cargar las preguntas")
-            preguntas = []
-
         categorias: dict[uuid.UUID, dict] = {}
         orden_categorias: list[uuid.UUID] = []
-        for pregunta in preguntas:
+        for pregunta in state.get_preguntas():
             cat = pregunta.categoria
             if cat.id not in categorias:
                 categorias[cat.id] = {"nombre": capitalizar_palabras(cat.nombre), "preguntas": []}
@@ -363,7 +352,29 @@ class CrearEvaluacionDialog(QDialog):
 
         return celda
 
-    
+    def obtener_rtas(self):
+        try:
+            respuestas = [] 
+            for pregunta_id, tipo in self.tipo_pregunta.items():
+                comentario = self.comentarios_pregunta[pregunta_id].text().strip() or None
+
+                semaforo = None
+                if tipo == "radio":
+                    grupo = self.grupos_semaforo.get(pregunta_id)
+                    boton_marcado = grupo.checkedButton() if grupo else None
+                    semaforo = boton_marcado.property("valor_semaforo") if boton_marcado else None
+
+                respuestas.append(RespuestaDTO(
+                    pregunta_id=pregunta_id,
+                    semaforo=semaforo,
+                    comentario=comentario,
+                ))
+            return respuestas
+        except Exception as e:
+            logger.exception("Error al guardar respuestas")
+            QMessageBox.critical(self, "Error", f"No se pudo guardar las respuestas:\n{e}")
+            return []
+
     def _guardar(self):
         titulo = self.titulo_edit.text().strip()
         if not titulo:
@@ -377,21 +388,7 @@ class CrearEvaluacionDialog(QDialog):
                 return
             alumno_id = self.alumno_id_edit.currentData()
 
-        respuestas = []
-        for pregunta_id, tipo in self.tipo_pregunta.items():
-            comentario = self.comentarios_pregunta[pregunta_id].text().strip() or None
-
-            semaforo = None
-            if tipo == "radio":
-                grupo = self.grupos_semaforo.get(pregunta_id)
-                boton_marcado = grupo.checkedButton() if grupo else None
-                semaforo = boton_marcado.property("valor_semaforo") if boton_marcado else None
-
-            respuestas.append(RespuestaDTO(
-                pregunta_id=pregunta_id,
-                semaforo=semaforo,
-                comentario=comentario,
-            ))
+        respuestas = self.obtener_rtas()
 
         dto = CrearEvaluacionDTO(
             alumno_id=alumno_id,
@@ -401,17 +398,17 @@ class CrearEvaluacionDialog(QDialog):
         )
 
         try:
+            local = LocalSession()
+            servicio_evaluacion = EvaluacionService([local])
             if self.modo_edicion:
-                self.servicio_evaluacion.editar_evaluacion(self.evaluacion_editar.id, dto, respuestas)
+                servicio_evaluacion.editar_evaluacion(self.evaluacion_editar.id, dto, respuestas)
             else:
-                self.servicio_evaluacion.crear_evaluacion(dto, respuestas)
+                servicio_evaluacion.crear_evaluacion(dto, respuestas)
         except ValueError as e:
             QMessageBox.warning(self, "No permitido", str(e))
             return
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo guardar la evaluación:\n{e}")
             return
-
-        self.accept()
 
         self.accept()

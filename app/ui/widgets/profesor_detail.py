@@ -331,13 +331,9 @@ class ProfesorDetail(QWidget):
 
     def _elegir_profesor_destino(self, otros: list = None, on_elegido=None):
         from PyQt6.QtWidgets import QInputDialog
-        from app.services.usuario_service import UsuarioService
 
         if otros is None:
-            local = LocalSession()
-            service = UsuarioService([local])
-            otros = [p for p in service.listar_profesores() if p.id != self.profesor.id]
-            local.close()
+            otros = [p for p in state.get_profesores() if p.id != self.profesor.id]
 
             if not otros:
                 self._mostrar_aviso("Error", "No hay otro profesor disponible para reasignar.")
@@ -397,22 +393,41 @@ class ProfesorDetail(QWidget):
                     self._eliminar_profesor(reasignar_a=destino.id, eliminar_alumnos=False)
 
     def _eliminar_profesor(self, reasignar_a, eliminar_alumnos: bool):
+        from app.database import RemoteSession
+        from app.services.usuario_service import UsuarioService
+
+        profesor_id = self.profesor.id
+        eliminado_remoto = False
+
+        if RemoteSession:
+            try:
+                remote = RemoteSession()
+                service_remote = UsuarioService([remote])
+                if reasignar_a is not None:
+                    service_remote.reasignar_alumnos(profesor_id, reasignar_a)
+                elif eliminar_alumnos:
+                    service_remote.eliminar_alumnos_de_profesor(profesor_id)
+                service_remote.eliminar_profesor(profesor_id, self.profesor.jefe)
+                eliminado_remoto = True
+            except Exception:
+                logger.exception("[ERROR] eliminar_profesor en remoto")
+            finally:
+                remote.close()
+
         try:
-            from app.database import RemoteSession
-            from app.services.usuario_service import UsuarioService
-
-            profesor_id = self.profesor.id
-
             local = LocalSession()
-            sessions = [local, RemoteSession()] if RemoteSession else [local]
-            service = UsuarioService(sessions)
+            service = UsuarioService([local])
 
             if reasignar_a is not None:
                 service.reasignar_alumnos(profesor_id, reasignar_a)
             elif eliminar_alumnos:
                 service.eliminar_alumnos_de_profesor(profesor_id)
 
-            resultado = service.eliminar_profesor(profesor_id, self.profesor.jefe)
+            if eliminado_remoto:
+                resultado = service.eliminar_profesor(profesor_id, self.profesor.jefe)   # hard delete, ya está bien en ambos lados
+            else:
+                resultado = service.cambiar_estado_usuario(profesor_id, 0)  # fallback: soft delete, se sube en el próximo sync
+
             local.close()
 
             if "exitosa" not in resultado.lower():
@@ -424,7 +439,7 @@ class ProfesorDetail(QWidget):
         except Exception:
             logger.exception("[ERROR] eliminar_profesor_completo")
             QMessageBox.warning(self, "Error", "Error al eliminar el profesor.")
-
+            
     # ELIMINAR PERFIL PROPIO
     def _confirmar_eliminar_perfil_propio(self):
         from app.services.usuario_service import UsuarioService
@@ -494,35 +509,63 @@ class ProfesorDetail(QWidget):
             if msg.exec() == QMessageBox.StandardButton.Yes:
                 self._eliminar_perfil_propio(reasignar_a=None)
 
-    def _eliminar_perfil_propio(self, reasignar_a):
-        try:
-            from app.database import RemoteSession
-            from app.services.usuario_service import UsuarioService
+    def _eliminar_profesor(self, reasignar_a, eliminar_alumnos: bool):
+        from app.database import RemoteSession
+        from app.services.usuario_service import UsuarioService
 
-            profesor_id = self.profesor.id
+        profesor_id = self.profesor.id
+        eliminado_remoto = False
+
+        if RemoteSession:
+            remote = None
+            try:
+                remote = RemoteSession()
+                service_remote = UsuarioService([remote])
+                if reasignar_a is not None:
+                    service_remote.reasignar_alumnos(profesor_id, reasignar_a)
+                elif eliminar_alumnos:
+                    service_remote.eliminar_alumnos_de_profesor(profesor_id)
+                service_remote.eliminar_profesor(profesor_id, self.profesor.jefe)
+                eliminado_remoto = True
+            except Exception:
+                logger.exception("[ERROR] eliminar_profesor en remoto")
+            finally:
+                if remote is not None:
+                    remote.close()
+
+        try:
             local = LocalSession()
-            sessions = [local, RemoteSession()] if RemoteSession else [local]
-            service = UsuarioService(sessions)
+            service = UsuarioService([local])
 
             if reasignar_a is not None:
                 service.reasignar_alumnos(profesor_id, reasignar_a)
+            elif eliminar_alumnos:
+                service.eliminar_alumnos_de_profesor(profesor_id)
 
-            resultado = service.eliminar_profesor(profesor_id, self.profesor.jefe)
+            if eliminado_remoto:
+                resultado = service.eliminar_profesor(profesor_id, self.profesor.jefe)
+                exito = resultado is not None and "exitosa" in resultado.lower()
+                mensaje_error = resultado if resultado else "Error al eliminar el profesor."
+            else:
+                resultado = service.cambiar_estado_usuario(profesor_id, 0)
+                exito = resultado is not None
+                mensaje_error = "No se pudo desactivar el profesor localmente."
+
             local.close()
 
-            if "exitosa" not in resultado.lower():
-                QMessageBox.warning(self, "Error", resultado)
+            if not exito:
+                QMessageBox.warning(self, "Error", mensaje_error)
                 return
 
-            self.perfil_propio_eliminado.emit()
+            state.cargar_profesores()
+            self.eliminar_solicitado.emit(profesor_id)
         except Exception:
-            logger.exception("[ERROR] eliminar_perfil_propio")
-            QMessageBox.warning(self, "Error", "Error al eliminar tu perfil.")
+            logger.exception("[ERROR] eliminar_profesor_completo")
+            QMessageBox.warning(self, "Error", "Error al eliminar el profesor.")
 
     # EDITAR PROFESOR
     def _editar_profesor(self):
         from app.ui.dialogs.editar_usuario import EditarProfesorDialog
-        from app.database import RemoteSession
         from app.services.usuario_service import UsuarioService
 
         dialog = EditarProfesorDialog(self.profesor, parent=self)
@@ -530,8 +573,7 @@ class ProfesorDetail(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             dto = dialog.get_dto()
             local = LocalSession()
-            sessions = [local, RemoteSession()] if RemoteSession else [local]
-            service = UsuarioService(sessions)
+            service = UsuarioService([local])
             try:
                 resultado = service.actualizar_profesor(dto)
                 if resultado:

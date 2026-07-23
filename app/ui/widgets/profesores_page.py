@@ -1,13 +1,11 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QComboBox, QScrollArea, QFrame
+    QLineEdit, QComboBox, QScrollArea, QFrame
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
 from app.state import state
-from app.database import LocalSession
-from app.services.usuario_service import UsuarioService
 from app.models.usuario import Profesor
 
 from app.ui.theme import theme
@@ -109,8 +107,8 @@ class ProfesoresPage(QWidget):
         self.todos = []
         self.setStyleSheet(f"background-color: {theme['oscuro']};")
         self._build()
-        self._cargar_profesores()
-        state.profesores_changed.connect(self._cargar_profesores)
+        state.profesores_changed.connect(self._filtrar)
+        state.cargar_profesores()
 
     def _build(self):
         layout = QVBoxLayout(self)
@@ -201,19 +199,12 @@ class ProfesoresPage(QWidget):
         self.label_total.setStyleSheet(f"color: {theme['gris']}; font-size: 11px;")
         layout.addWidget(self.label_total)
 
-    def _cargar_profesores(self):
-        local = LocalSession()
-        service = UsuarioService([local])
-        self.todos = service.listar_profesores()
-        local.close()
-        self._filtrar()
-
     def _filtrar(self):
         texto = self.search.text().lower()
         jefe_idx = self.filtro_jefe.currentIndex()
 
         filtrados = []
-        for p in self.todos:
+        for p in state.get_profesores():
             if texto and texto not in p.nombre.lower() and texto not in (p.tel or "").lower():
                 continue
             if jefe_idx == 1 and not p.jefe:
@@ -225,8 +216,9 @@ class ProfesoresPage(QWidget):
         self._render_lista(filtrados)
 
     def _render_lista(self, profesores: list):
-        for i in reversed(range(self.lista_layout.count())):
-            w = self.lista_layout.itemAt(i).widget()
+        while self.lista_layout.count():
+            item = self.lista_layout.takeAt(0)
+            w = item.widget()
             if w:
                 w.deleteLater()
 
@@ -238,5 +230,5 @@ class ProfesoresPage(QWidget):
             card.clicked.connect(self.profesor_seleccionado.emit)
             self.lista_layout.addWidget(card)
 
-        total = len(profesores)
+        total = len(profesores)-1
         self.label_total.setText(f"{total} profesor{'es' if total != 1 else ''}")

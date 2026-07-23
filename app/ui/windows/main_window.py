@@ -149,20 +149,26 @@ class MainWindow(QMainWindow):
         index = self._tabs_alumnos.pop(alumno_id, None)
         if index is not None:
             self.tabs.removeTab(index)
-            # Actualizar indices de los tabs restantes
             self._tabs_alumnos = {
                 aid: (i if i < index else i - 1)
                 for aid, i in self._tabs_alumnos.items()
+            }
+            self._tabs_profesores = {
+                aid: (i if i < index else i - 1)
+                for aid, i in self._tabs_profesores.items()
             }
             
     def _cerrar_tab_profesor(self, profesor_id):
         index = self._tabs_profesores.pop(profesor_id, None)
         if index is not None:
             self.tabs.removeTab(index)
-            # Actualizar indices de los tabs restantes
             self._tabs_profesores = {
                 aid: (i if i < index else i - 1)
                 for aid, i in self._tabs_profesores.items()
+            }
+            self._tabs_alumnos = {
+                aid: (i if i < index else i - 1)
+                for aid, i in self._tabs_alumnos.items()
             }
 
     def _build_navbar(self) -> QWidget:

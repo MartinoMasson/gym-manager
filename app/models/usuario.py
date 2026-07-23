@@ -30,6 +30,8 @@ class Usuario(Base):
     user: Mapped[str | None] = mapped_column(String(50), unique=True)
     rol: Mapped[int] = mapped_column(Integer, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    estado: Mapped[int] = mapped_column(Integer, default=1)
+    fecha_inactividad: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     __mapper_args__ = {
         "polymorphic_on": "rol",
@@ -57,8 +59,6 @@ class Alumno(Usuario):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("usuarios.id"), primary_key=True)
     tel_emergencia: Mapped[str | None] = mapped_column(Text)
     fecha_nacimiento: Mapped[Date | None] = mapped_column(Date)
-    estado: Mapped[int] = mapped_column(Integer, default=1)
-    fecha_inactividad: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     evaluaciones: Mapped[list["Evaluacion"]] = relationship(
         back_populates="alumno", cascade="all, delete-orphan"

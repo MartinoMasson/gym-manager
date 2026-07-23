@@ -1,14 +1,14 @@
 import random
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QScrollArea, QFrame, QSizePolicy
+    QPushButton, QScrollArea
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont, QColor, QPainter, QBrush
+from PyQt6.QtGui import QFont
 
-from app.database import LocalSession
-from app.services.usuario_service import UsuarioService
 from app.models.usuario import Profesor
+from app.state import state
+
 
 from app.ui.theme import theme
 
@@ -79,35 +79,46 @@ class AvatarWidget(QWidget):
 
 class LoginWindow(QWidget):
     login_exitoso = pyqtSignal(object)
+    profesor_seleccionado = pyqtSignal(object) 
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle("GymManager — Login")
         self.setMinimumSize(800, 500)
         self.setStyleSheet(f"background-color: {theme['oscuro']};")
+        self.listo = False
         self._build()
-        self._cargar_profesores()
+        state.profesores_changed.connect(self.refrescar_profesores)
+        state.cargar_profesores()
+    
+    def set_listo(self, listo: bool):
+        self.listo = listo
+        self.avatares_widget.setEnabled(listo)
 
+    def refrescar_profesores(self):
+        self._cargar_profesores()
+        self.set_listo(True)
+    
     def _build(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(40, 60, 40, 40)
-        layout.setSpacing(8)
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(40, 60, 40, 40)
+        self.layout.setSpacing(8)
 
         # Título
         titulo = QLabel("¿Quién está usando la app?")
         titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         titulo.setFont(QFont("Arial", 26, QFont.Weight.Bold))
         titulo.setStyleSheet(f"color: {theme['claro']};")
-        layout.addWidget(titulo)
+        self.layout.addWidget(titulo)
 
         # Subtítulo
         subtitulo = QLabel("Seleccioná tu perfil para continuar.")
         subtitulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitulo.setFont(QFont("Arial", 12))
         subtitulo.setStyleSheet(f"color: {theme['gris']};")
-        layout.addWidget(subtitulo)
+        self.layout.addWidget(subtitulo)
 
-        layout.addSpacing(40)
+        self.layout.addSpacing(40)
 
         # Scroll area para los avatares
         scroll = QScrollArea()
@@ -123,54 +134,63 @@ class LoginWindow(QWidget):
         self.avatares_layout.setSpacing(24)
 
         scroll.setWidget(self.avatares_widget)
-        layout.addWidget(scroll)
+        self.layout.addWidget(scroll)
 
-        layout.addSpacing(20)
+        self.layout.addSpacing(20)
+        
+    
+    def cargar_boton(self):
+        if hasattr(self, "btn_agregar") and self.btn_agregar is not None:
+            self.layout.removeWidget(self.btn_agregar)
+            self.btn_agregar.deleteLater()
+            self.btn_agregar = None
 
-        # Botón agregar profesor
-        btn_agregar = QPushButton("+ Agregar profesor")
-        btn_agregar.setFont(QFont("Arial", 10))
-        btn_agregar.setFixedSize(180, 36)
-        btn_agregar.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_agregar.setStyleSheet(f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {theme['gris']};
-                border: 1px solid {theme['gris']};
-                border-radius: 8px;
-            }}
-            QPushButton:hover {{
-                color: {theme['claro']};
-                border-color: {theme['claro']};
-            }}
-        """)
-        btn_agregar.clicked.connect(self._agregar_profesor)
-        if ( not self._existe_profesor() ):
-            layout.addWidget(btn_agregar, alignment=Qt.AlignmentFlag.AlignCenter)
+        if not state.existe_profesor():
+            self.btn_agregar = QPushButton("+ Agregar profesor")
+            self.btn_agregar.setFont(QFont("Arial", 10))
+            self.btn_agregar.setFixedSize(180, 36)
+            self.btn_agregar.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_agregar.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: transparent;
+                    color: {theme['gris']};
+                    border: 1px solid {theme['gris']};
+                    border-radius: 8px;
+                }}
+                QPushButton:hover {{
+                    color: {theme['claro']};
+                    border-color: {theme['claro']};
+                }}
+            """)
+            self.btn_agregar.clicked.connect(self._agregar_profesor)
 
-    def _existe_profesor(self):
-        local = LocalSession()
-        service = UsuarioService([local])
-        return service.existe_profesor()
-
+            self.layout.addWidget(
+                self.btn_agregar,
+                alignment=Qt.AlignmentFlag.AlignCenter
+            )
+    
     def _cargar_profesores(self):
-        # Limpiar avatares existentes
-        for i in reversed(range(self.avatares_layout.count())):
-            self.avatares_layout.itemAt(i).widget().deleteLater()
+        # Limpiar avatares existentes ANTES de repoblar
+        while self.avatares_layout.count():
+            item = self.avatares_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
 
-        local = LocalSession()
-        sessions = [local]
-        service = UsuarioService(sessions)
-        profesores = service.listar_profesores()
-        local.close()
-
+        profesores = state.get_profesores()
         for i, profesor in enumerate(profesores):
             color = theme["perfiles"][i % len(theme["perfiles"])]
             avatar = AvatarWidget(profesor, color)
             avatar.clicked.connect(lambda p=profesor: self._seleccionar(p))
             self.avatares_layout.addWidget(avatar)
+            
+        self.cargar_boton()
+        
 
+        
     def _seleccionar(self, profesor: Profesor):
+        if not self.listo:
+            return
         self.login_exitoso.emit(profesor)
         self.close()
 

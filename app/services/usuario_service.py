@@ -1,11 +1,10 @@
 from datetime import datetime
-import select
 import uuid
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import joinedload
+
+from sqlalchemy.orm import Session, joinedload, aliased
 from sqlalchemy import func
 
-from app.models.usuario import Profesor, Alumno, DetallesAlumno, Entrenamiento
+from app.models.usuario import Usuario, Profesor, Alumno, DetallesAlumno, Entrenamiento
 from app.services.dtos import ActualizarAlumnoDTO, ActualizarProfesorDTO, CrearProfesorDTO, CrearAlumnoDTO, DetallesAlumnoDTO, HorarioEntrenamientoDTO
 from app.utils.tiempo import formatear_horario
 from app.utils.tipo_texto import capitalizar_palabras
@@ -82,8 +81,8 @@ class UsuarioService :
             return alumno_local
         except Exception:
             self.logger.exception("Error al crear alumno")
-            raise
-
+            return None
+        
     def insert_dia_entrenamiento(self, dto: HorarioEntrenamientoDTO) -> Entrenamiento:
         try:
             dia_id = uuid.uuid4()
@@ -160,13 +159,6 @@ class UsuarioService :
         except Exception:
             self.logger.exception("Error al obtener alumno")
             return None
-
-    def existe_profesor(self) -> bool:
-        try:
-            return self.session.query(Profesor).first() is not None
-        except Exception:
-            self.logger.exception("Error al verificar existencia de profesor")
-            return False
     
     # --- Listar ---
     def listar_alumnos(self, profesor: Profesor = None) -> list[Alumno]:
@@ -184,11 +176,14 @@ class UsuarioService :
             self.logger.exception("Error al listar alumnos")
             return []
 
+
     def listar_profesores(self) -> list[Profesor]:
         try:
+            AlumnoAlias = aliased(Alumno, flat=True)
+
             resultados = (
-                self.session.query(Profesor, func.count(Alumno.id).label("alumnos_count"))
-                .outerjoin(Profesor.alumnos)
+                self.session.query(Profesor, func.count(AlumnoAlias.id).label("alumnos_count"))
+                .outerjoin(AlumnoAlias, Profesor.alumnos)
                 .group_by(Profesor.id)
                 .order_by(Profesor.nombre)
                 .all()
@@ -205,22 +200,25 @@ class UsuarioService :
             return []
 
     # --- Cambiar estado ---
-    def cambiar_estado_alumno(self, alumno_id: uuid.UUID, estado: int) -> Alumno | None:
+    def cambiar_estado_usuario(self, usuario_id: uuid.UUID, estado: int) -> str | None:
         try:
-            alumno_local = None
+            encontrado = False
             for i, s in enumerate(self.sessions):
-                alumno = s.get(Alumno, alumno_id)
-                if not alumno:
+                usuario = s.get(Usuario, usuario_id)
+                if not usuario:
                     continue
-                alumno.estado = estado
-                alumno.fecha_inactividad = datetime.now() if estado == 0 else None
-                if i == 0:
-                    alumno_local = alumno
+                encontrado = True
+                usuario.estado = estado
+                usuario.fecha_inactividad = datetime.now() if estado == 0 else None
+
+            if not encontrado:
+                return None
+
             self._commit_all()
-            return alumno_local
+            return "Cambio de estado exitoso."
         except Exception:
-            self.logger.exception("Error al cambiar estado del alumno")
-            return None
+            self.logger.exception("Error al cambiar estado del usuario")
+        return None
 
     # --- Asignaciones ---
     def asignar_alumno_a_profesor(self, profesor_id: uuid.UUID, alumno_id: uuid.UUID) -> bool:
@@ -270,6 +268,7 @@ class UsuarioService :
                 alumno.nombre = capitalizar_palabras(dto.nombre)
                 alumno.tel = dto.tel
                 alumno.tel_emergencia = dto.tel_emergencia
+                alumno.updated_at = datetime.now()
 
                 # Delete-and-recreate del horario de entrenamiento
                 for entrenamiento in list(alumno.entrenamientos):
@@ -303,6 +302,7 @@ class UsuarioService :
                 profesor.apellido = capitalizar_palabras(dto.apellido)
                 profesor.tel = dto.tel
                 profesor.jefe = dto.jefe
+                profesor.updated_at = datetime.now()
 
                 if i == 0:
                     profesor_local = profesor
@@ -339,7 +339,7 @@ class UsuarioService :
             self.logger.exception("Error al eliminar alumno")
             for s in self.sessions:
                 s.rollback()
-            return "Error al eliminar el alumno."
+            raise
     
     def eliminar_profesor(self, profesor_id: uuid.UUID, jefe: bool) -> str:
         try:

@@ -1,6 +1,6 @@
 import uuid
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import ForeignKey, Date, DateTime, Text, String, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Uuid
@@ -45,7 +45,7 @@ class Evaluacion(Base):
     titulo: Mapped[str] = mapped_column(String(100), nullable=False)
     fecha: Mapped[Date | None] = mapped_column(Date)
     comentario: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     alumno: Mapped["Alumno"] = relationship(back_populates="evaluaciones")
     respuestas: Mapped[list["RespuestaEvaluacion"]] = relationship(

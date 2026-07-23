@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
 import math
 from PyQt6.QtCore import Qt
 import uuid
-from app.services.evaluacion_service import EvaluacionService
 from app.utils.tipo_texto import capitalizar_palabras
 from app.ui.theme import theme
 from app.state import state
@@ -458,11 +457,11 @@ class EvaluacionesTab(QWidget):
             from app.database import LocalSession, RemoteSession
             from app.services.evaluacion_service import EvaluacionService
 
-            local = LocalSession()
-            remote = RemoteSession() if RemoteSession else None
-            sessions = [local, remote] if remote else [local]
-            servicio = EvaluacionService(sessions)
             try:
+                local = LocalSession()
+                remote = RemoteSession() if RemoteSession else None
+                sessions = [local, remote] if remote else [local]
+                servicio = EvaluacionService(sessions)
                 servicio.eliminar_evaluacion(evaluacion_id)
                 self._cargar_evaluaciones()
             except Exception:

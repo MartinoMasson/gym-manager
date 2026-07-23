@@ -6,8 +6,6 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
 from app.state import state
-from app.database import LocalSession
-from app.services.usuario_service import UsuarioService
 from app.models.usuario import Alumno
 
 from app.ui.theme import theme
@@ -278,14 +276,15 @@ class AlumnosPage(QWidget):
         self._render_lista(filtrados)
 
     def _render_lista(self, alumnos: list):
-        for i in reversed(range(self.lista_layout.count())):
-            w = self.lista_layout.itemAt(i).widget()
+        while self.lista_layout.count():
+            item = self.lista_layout.takeAt(0)
+            w = item.widget()
             if w:
                 w.deleteLater()
 
         for i, alumno in enumerate(alumnos):
             color = theme["perfiles"][i % len(theme["perfiles"])]
-            card = AlumnoCard(alumno,color)
+            card = AlumnoCard(alumno, color)
             card.clicked.connect(self.alumno_seleccionado.emit)
             self.lista_layout.addWidget(card)
 

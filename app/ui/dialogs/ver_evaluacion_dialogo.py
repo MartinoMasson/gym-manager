@@ -491,13 +491,11 @@ class VerEvaluacionDialog(QDialog):
 
         confirm = confirm_box.exec()
         if confirm == QMessageBox.StandardButton.Yes:
-            from app.database import LocalSession, RemoteSession
+            from app.database import LocalSession
             from app.services.evaluacion_service import EvaluacionService
 
             local = LocalSession()
-            remote = RemoteSession() if RemoteSession else None
-            sessions = [local, remote] if remote else [local]
-            servicio = EvaluacionService(sessions)
+            servicio = EvaluacionService([local])
             try:
                 servicio.eliminar_evaluacion(evaluacion_id)
                 self._cargar_evaluaciones()
@@ -506,5 +504,3 @@ class VerEvaluacionDialog(QDialog):
                 QMessageBox.critical(self, "Error", "No se pudo eliminar la evaluación")
             finally:
                 local.close()
-                if remote:
-                    remote.close()

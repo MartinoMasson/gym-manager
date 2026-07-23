@@ -7,7 +7,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
 from app.models.usuario import Alumno
-from app.database import LocalSession
+from app.database import LocalSession, RemoteSession
+from app.services.usuario_service import UsuarioService
 from app.state import state
 from PyQt6.QtCore import Qt, pyqtSignal
 import logging
@@ -351,21 +352,6 @@ class AlumnoDetail(QWidget):
     #     print("Crear rutina")
     # def _ver_ultima_rutina(self):
     #     print("Ver última rutina")
-        
-    #EVALUACIOIN
-    # def _crear_evaluacion(self):
-    #     from app.ui.dialogs.crear_evaluacion_dialog import CrearEvaluacionDialog
-    #     if CrearEvaluacionDialog(self.alumno_id, parent=self).exec():
-    #         if hasattr(self, "_evaluaciones_tab"):
-    #             self._evaluaciones_tab._cargar_evaluaciones()
-        
-    # def _ver_ultima_evaluacion(self):
-    #     from app.ui.dialogs.ver_evaluacion_dialogo import VerEvaluacionDialog
-    #     VerEvaluacionDialog(self.alumno_id, parent=self).exec()
-        
-    # DATOS PERSONALES
-    # def _mostrar_grafico_medidas(self):
-    #     print("Ver historial de datos corporales")
     
     #EDITAR ALUMNO
     def _confirmar_eliminar(self):
@@ -421,46 +407,53 @@ class AlumnoDetail(QWidget):
                 self._desactivar()
 
     def _eliminar_completo(self):
+        eliminado_remoto = False
+        remote = RemoteSession()
         try:
-            from app.database import RemoteSession
-            from app.services.usuario_service import UsuarioService
-            id = self.alumno.id
+            service_remote = UsuarioService([remote])
+            service_remote.eliminar_alumno(self.alumno.id)
+            eliminado_remoto = True
+        except Exception:
+            logger.exception("[ERROR] eliminar_alumno_completo en remoto")
+        finally:
+            remote.close()
+
+        try:
             local = LocalSession()
-            sessions = [local, RemoteSession()] if RemoteSession else [local]
-            service = UsuarioService(sessions)
-            service.eliminar_alumno(self.alumno.id)
-            local.close()
-            state.cargar_alumnos() 
-            self.eliminar_solicitado.emit(id)
+            service = UsuarioService([local])
+            id = self.alumno.id
+            if eliminado_remoto:
+                service.eliminar_alumno(self.alumno.id)
+                state.cargar_alumnos()
+                self.eliminar_solicitado.emit(id)
+            else:
+                self._desactivar()
         except Exception:
             logger.exception("[ERROR] eliminar_alumno_completo")
-            QMessageBox.warning(self, "Error", "Error al eliminar el alumno.")
-
+            self._mostrar_error("Error al eliminar el alumno.")
+        finally:
+            local.close()
+        
     def _desactivar(self):
-        from app.database import RemoteSession
         from app.services.usuario_service import UsuarioService
         local = LocalSession()
-        sessions = [local, RemoteSession()] if RemoteSession else [local]
-        service = UsuarioService(sessions)
-        service.cambiar_estado_alumno(self.alumno.id, 0)
+        service = UsuarioService([local])
+        service.cambiar_estado_usuario(self.alumno.id, 0)
         local.close()
-        state.cargar_alumnos()  # recarga y emite la señal
+        state.cargar_alumnos()
         self.eliminar_solicitado.emit(self.alumno.id)
         
     def _activar(self):
-        from app.database import RemoteSession
         from app.services.usuario_service import UsuarioService
         local = LocalSession()
-        sessions = [local, RemoteSession()] if RemoteSession else [local]
-        service = UsuarioService(sessions)
-        service.cambiar_estado_alumno(self.alumno.id, 1)
+        service = UsuarioService([local])
+        service.cambiar_estado_usuario(self.alumno.id, 1)
         local.close()
-        state.cargar_alumnos()  # recarga y emite la señal
+        state.cargar_alumnos() 
         self.activar_solicitado.emit(self.alumno.id)
             
     def _editar_alumno(self):
         from app.ui.dialogs.editar_usuario import EditarAlumnoDialog
-        from app.database import RemoteSession
         from app.services.usuario_service import UsuarioService
 
         dialog = EditarAlumnoDialog(self.alumno, parent=self)
@@ -468,16 +461,41 @@ class AlumnoDetail(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             dto = dialog.get_dto()
             local = LocalSession()
-            sessions = [local, RemoteSession()] if RemoteSession else [local]
-            service = UsuarioService(sessions)
+            service = UsuarioService([local])
             try:
                 resultado = service.actualizar_alumno(dto)
                 if resultado:
                     state.cargar_alumnos()
                 else:
-                    QMessageBox.warning(self, "Error", "No se pudo actualizar el alumno.")
+                    self._mostrar_error("No se pudo actualizar el alumno.")
+
             except Exception:
                 logger.exception("Error al actualizar alumno")
-                QMessageBox.warning(self, "Error", "Error al actualizar el alumno.")
+                self._mostrar_error("Ocurrió un error al actualizar el alumno.")
             finally:
                 local.close()
+                
+    def _mostrar_error(self, texto):
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Icon.Warning)
+        msg.setWindowTitle("Error")
+        msg.setText(texto)
+        msg.setStyleSheet(f"""
+            QMessageBox {{
+                background-color: {theme['oscuro']};
+                color: {theme['claro']};
+            }}
+            QLabel {{ color: {theme['claro']}; }}
+            QPushButton {{
+                padding: 6px 16px;
+                border-radius: 6px;
+                border: 1px solid {theme['gris']};
+                color: {theme['claro']};
+                background-color: {theme['tarjeta']};
+            }}
+            QPushButton:hover {{
+                background-color: {theme['primario']};
+                color: {theme['oscuro']};
+            }}
+        """)
+        msg.exec()

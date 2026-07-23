@@ -27,7 +27,7 @@ def service(session):
 
 
 def test_crear_profesor(service):
-    dto = CrearProfesorDTO(nombre="Carlos", jefe=True)
+    dto = CrearProfesorDTO(nombre="Carlos", apellido="Perez", jefe=True)
     profesor = service.crear_profesor(dto)
     assert profesor.id is not None
     assert profesor.nombre == "Carlos"
@@ -44,15 +44,15 @@ def test_crear_alumno(service):
 
 
 def test_login_profesor(service):
-    dto = CrearProfesorDTO(nombre="Maria")
+    dto = CrearProfesorDTO(nombre="Maria", apellido="Gonzalez")
     profesor = service.crear_profesor(dto)
     resultado = service.login_profesor(profesor.id)
     assert resultado.id == profesor.id
 
 
 def test_listar_profesores(service):
-    service.crear_profesor(CrearProfesorDTO(nombre="Carlos"))
-    service.crear_profesor(CrearProfesorDTO(nombre="Maria"))
+    service.crear_profesor(CrearProfesorDTO(nombre="Carlos", apellido="Perez"))
+    service.crear_profesor(CrearProfesorDTO(nombre="Maria", apellido="Perez"))
     profesores = service.listar_profesores()
     assert len(profesores) == 2
 
@@ -66,9 +66,10 @@ def test_listar_alumnos_activos(service):
 
 def test_cambiar_estado_alumno(service):
     alumno = service.crear_alumno(CrearAlumnoDTO(nombre="Juan"))
-    service.cambiar_estado_alumno(alumno.id, 0)
-    alumnos_activos = service.listar_alumnos(activos_only=True)
-    assert len(alumnos_activos) == 0
+    service.cambiar_estado_usuario(alumno.id, 0)
+    alumnos  = service.listar_alumnos()
+    assert len(alumnos) == 1
+    assert alumnos[0].estado == 0
 
 
 def test_agregar_detalles_alumno(service):
@@ -80,7 +81,7 @@ def test_agregar_detalles_alumno(service):
 
 
 def test_asignar_alumno_a_profesor(service):
-    profesor = service.crear_profesor(CrearProfesorDTO(nombre="Carlos"))
+    profesor = service.crear_profesor(CrearProfesorDTO(nombre="Carlos", apellido="Perez"))
     alumno = service.crear_alumno(CrearAlumnoDTO(nombre="Juan"))
     resultado = service.asignar_alumno_a_profesor(profesor.id, alumno.id)
     assert resultado == True
@@ -88,8 +89,8 @@ def test_asignar_alumno_a_profesor(service):
 
 
 def test_reasignar_alumno(service):
-    profesor1 = service.crear_profesor(CrearProfesorDTO(nombre="Carlos"))
-    profesor2 = service.crear_profesor(CrearProfesorDTO(nombre="Maria"))
+    profesor1 = service.crear_profesor(CrearProfesorDTO(nombre="Carlos", apellido="Perez"))
+    profesor2 = service.crear_profesor(CrearProfesorDTO(nombre="Maria", apellido="Gonzalez"))
     alumno = service.crear_alumno(CrearAlumnoDTO(nombre="Juan"))
     service.asignar_alumno_a_profesor(profesor1.id, alumno.id)
     service.reasignar_alumno(alumno.id, profesor2.id)

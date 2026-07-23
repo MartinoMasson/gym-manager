@@ -134,15 +134,11 @@ class AgregarDetallesDialog(QDialog):
             return None
 
     def _guardar(self):
-        from app.database import RemoteSession
         from app.services.dtos import DetallesAlumnoDTO
         from datetime import date
-
         local = LocalSession()
-        remote = RemoteSession() if RemoteSession else None
-        sessions = [local, remote] if remote else [local]
 
-        service = UsuarioService(sessions)
+        service = UsuarioService([local])
         service.agregar_detalles_alumno(DetallesAlumnoDTO(
             alumno_id=self.alumno.id,
             peso=self._float(self.input_peso),
