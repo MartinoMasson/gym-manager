@@ -3,8 +3,10 @@ updater.py — Auto-actualización desde GitHub Releases
 
 Compara la versión local (app.version.__version__) contra el último
 release publicado en GitHub. Si hay una versión mayor, pregunta al
-usuario y, si acepta, descarga el .exe del release y se reemplaza
-a sí mismo al reiniciar.
+usuario y, si acepta, descarga el INSTALADOR (.exe generado por Inno
+Setup) del release y lo corre en modo silencioso. El instalador
+sobrescribe el codigo en Program Files, pero NUNCA toca
+%ProgramData%\GymManager (donde viven .env y gymmanager.db reales).
 """
 import os
 import sys
@@ -20,15 +22,13 @@ logger = logging.getLogger(__name__)
 
 REPO_OWNER = "MartinoMasson"
 REPO_NAME = "gym-manager"
-API_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest"
+
+API_URL_ALL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases"
 
 
 def _version_tuple(v: str) -> tuple:
     v = v.lstrip("vV")
     return tuple(int(x) for x in v.split("."))
-
-
-API_URL_ALL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases"
 
 
 def obtener_ultimo_release():
@@ -37,6 +37,9 @@ def obtener_ultimo_release():
     devuelve el de mayor versión semántica según el tag — no depende
     de 'latest' de GitHub, que se basa en fecha de publicación y no
     en el tag más alto.
+
+    Busca como asset un instalador (nombre que empieza con
+    "GymManager-Setup" y termina en .exe), NO cualquier .exe.
     """
     try:
         resp = requests.get(API_URL_ALL, timeout=5)
@@ -57,12 +60,19 @@ def obtener_ultimo_release():
         mejor = max(releases, key=tag_key)
 
         assets = mejor.get("assets", [])
-        exe_asset = next((a for a in assets if a["name"].lower().endswith(".exe")), None)
-        if not exe_asset:
-            logger.warning("[UPDATER] El release más reciente no tiene un .exe adjunto")
+        instalador = next(
+            (
+                a for a in assets
+                if a["name"].lower().startswith("gymmanager-setup")
+                and a["name"].lower().endswith(".exe")
+            ),
+            None,
+        )
+        if not instalador:
+            logger.warning("[UPDATER] El release más reciente no tiene un instalador adjunto")
             return None
 
-        return mejor["tag_name"], exe_asset["browser_download_url"], exe_asset["name"]
+        return mejor["tag_name"], instalador["browser_download_url"], instalador["name"]
     except Exception:
         logger.exception("[UPDATER] Error al consultar GitHub Releases")
         return None
@@ -94,39 +104,38 @@ def _descargar(url: str, destino: str):
 
 def aplicar_actualizacion(url: str):
     """
-    Descarga el nuevo .exe y lanza un script .bat que espera a que este
-    proceso termine, reemplaza el .exe viejo y relanza la app.
-    Si todo sale bien, esta función NO retorna — cierra el proceso actual.
+    Descarga el instalador nuevo y lo corre en modo silencioso.
+    El instalador (Inno Setup) se encarga de:
+      - cerrar/reemplazar los archivos de Program Files
+      - relanzar la app al terminar (ver [Run] en gym-manager.iss)
+    Esta función, si todo sale bien, NO retorna: cierra el proceso actual
+    para que el instalador pueda reemplazar los archivos en uso.
     """
     if not getattr(sys, "frozen", False):
-        logger.warning("[UPDATER] Corriendo desde código fuente, no se puede auto-reemplazar el .exe")
+        logger.warning("[UPDATER] Corriendo desde código fuente, no se puede auto-actualizar")
         return False
 
-    exe_actual = sys.executable
-    exe_dir = os.path.dirname(exe_actual)
-    exe_nombre = os.path.basename(exe_actual)
-    exe_nuevo = os.path.join(exe_dir, "GymManager_new.exe")
+    tmp_dir = os.environ.get("TEMP", os.path.expanduser("~"))
+    instalador_path = os.path.join(tmp_dir, "GymManager-Setup.exe")
 
-    print("[UPDATER] Descargando nueva versión...")
-    _descargar(url, exe_nuevo)
+    print("[UPDATER] Descargando instalador...")
+    _descargar(url, instalador_path)
 
-    bat_path = os.path.join(exe_dir, "_update.bat")
-    bat_content = f"""@echo off
-:loop
-tasklist /FI "IMAGENAME eq {exe_nombre}" 2>NUL | find /I "{exe_nombre}" >NUL
-if "%ERRORLEVEL%"=="0" (
-    timeout /T 1 /NOBREAK >NUL
-    goto loop
-)
-move /Y "{exe_nuevo}" "{exe_actual}"
-start "" "{exe_actual}"
-del "%~f0"
-"""
-    with open(bat_path, "w") as f:
-        f.write(bat_content)
+    print("[UPDATER] Ejecutando instalador (modo silencioso)...")
+    # /VERYSILENT: sin pantallas. /SUPPRESSMSGBOXES: sin popups de error.
+    # /NORESTART: no reiniciar Windows. El instalador relanza la app solo
+    # (ver seccion [Run] con postinstall en el .iss), asi que no hace
+    # falta relanzarla manualmente aca.
+    subprocess.Popen(
+        [
+            instalador_path,
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+        ]
+    )
 
-    subprocess.Popen(["cmd", "/c", bat_path], creationflags=subprocess.CREATE_NO_WINDOW)
-    print("[UPDATER] Reiniciando aplicación...")
+    print("[UPDATER] Cerrando para permitir la actualización...")
     sys.exit(0)
 
 
@@ -139,7 +148,7 @@ def alembic_upgrade():
     cfg = Config(get_resource_path("alembic.ini"))
     cfg.set_main_option("script_location", get_resource_path("migrations"))
     cfg.cmd_opts = argparse.Namespace(x=["db=local"])
-    
+
     try:
         command.upgrade(cfg, "head")
         print("[UPDATER] Migraciones aplicadas ✓")
@@ -168,7 +177,8 @@ def verificar_actualizacion(preguntar=True):
             resp = QMessageBox.question(
                 None,
                 "Actualización disponible",
-                f"Hay una nueva versión de GymManager ({tag}).\n¿Desea actualizar ahora?",
+                f"Hay una nueva versión de GymManager ({tag}).\n¿Desea actualizar ahora?\n"
+                "Windows puede pedir permisos de administrador.",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if resp != QMessageBox.StandardButton.Yes:

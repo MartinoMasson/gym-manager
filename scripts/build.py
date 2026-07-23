@@ -29,13 +29,19 @@ SPEC_FILE = PROJECT_ROOT / f"{APP_NAME}.spec"
 ICON_PATH = PROJECT_ROOT / "assets" / "icon.ico"
 
 # Recursos de SOLO LECTURA que se empaquetan con --add-data.
-# En --onedir terminan dentro de _internal/, y se leen en runtime con
-# get_resource_path() (ver app/utils/paths.py). NO poner aca .env ni
-# la base de datos: esos deben quedar al lado del .exe (ver mas abajo).
+# En runtime se leen con get_resource_path() (ver app/utils/paths.py).
+#
+# .env y la base de datos van como TEMPLATES: la app los copia a la
+# carpeta persistente de datos (%ProgramData%\GymManager) solo la
+# primera vez que corre en esa PC (ver asegurar_archivos_iniciales()
+# en paths.py). Asi el instalador puede actualizar el codigo sin
+# pisar nunca los datos reales del usuario.
 DATA_CANDIDATES = [
     (PROJECT_ROOT / "migrations", "migrations"),
     (PROJECT_ROOT / "alembic.ini", "."),
     (PROJECT_ROOT / "assets", "assets"),
+    (PROJECT_ROOT / ".env", ".env.template"),
+    (PROJECT_ROOT / "gymmanager.db", "gymmanager_template.db"),
 ]
 
 # Modulos que PyInstaller no detecta por analisis estatico porque se
@@ -43,14 +49,6 @@ DATA_CANDIDATES = [
 # no importado normalmente, asi que sus imports no se ven en el analisis).
 HIDDEN_IMPORTS = [
     "logging.config",
-]
-
-# Archivos que deben quedar AL LADO del .exe (no en _internal), porque
-# get_base_dir() los busca ahi: .env (config editable, con la URL de la
-# base remota) y la base de datos local inicial.
-SIDE_FILES = [
-    (PROJECT_ROOT / ".env", ".env"),
-    (PROJECT_ROOT / "gymmanager.db", "gymmanager.db"),
 ]
 
 
@@ -80,7 +78,7 @@ def construir_comando() -> list[str]:
         "--name",
         APP_NAME,
         "--onedir",
-        "--windowed", # ventana sin consola
+        "--windowed", # No abre la terminal al ejecutar la app, solo la ventana principal
         "--noconfirm",
         "--clean",
         "--contents-directory",
@@ -108,22 +106,6 @@ def construir_comando() -> list[str]:
     return cmd
 
 
-def copiar_archivos_al_lado_del_exe(carpeta_salida: Path) -> None:
-    """
-    Copia .env y la base de datos local directamente en la raiz de la
-    carpeta de salida (al lado del .exe), NO dentro de _internal.
-    get_base_dir() en app/utils/paths.py busca los archivos ahi.
-    """
-    for origen, destino in SIDE_FILES:
-        if not origen.exists():
-            print(f"(omitido, no existe: {origen})")
-            continue
-
-        destino_path = carpeta_salida / destino
-        shutil.copy2(origen, destino_path)
-        print(f"Copiado al lado del exe: {origen} -> {destino_path}")
-
-
 def main() -> None:
     print(f"Proyecto: {PROJECT_ROOT}")
     print(f"Entry point: {ENTRY_POINT}")
@@ -144,14 +126,10 @@ def main() -> None:
         sys.exit(resultado.returncode)
 
     salida = DIST_DIR / APP_NAME
-
-    print("-" * 60)
-    print("Copiando .env y base de datos local al lado del ejecutable...")
-    copiar_archivos_al_lado_del_exe(salida)
-
     print("-" * 60)
     print(f"Build completo. Salida en: {salida}")
     print(f"Ejecutable: {salida / (APP_NAME + '.exe')}")
+    print("Siguiente paso: correr el instalador de Inno Setup (installer/Gennes gimnasio.iss) sobre esta carpeta.")
 
 
 if __name__ == "__main__":
