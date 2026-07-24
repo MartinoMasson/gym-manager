@@ -28,21 +28,31 @@ SPEC_FILE = PROJECT_ROOT / f"{APP_NAME}.spec"
 # Icono opcional. Si existe assets/icon.ico se usa, si no se omite.
 ICON_PATH = PROJECT_ROOT / "assets" / "icon.ico"
 
-# Recursos de SOLO LECTURA que se empaquetan con --add-data.
+# Recursos de SOLO LECTURA que se empaquetan tal cual (mismo nombre).
 # En runtime se leen con get_resource_path() (ver app/utils/paths.py).
-#
-# .env y la base de datos van como TEMPLATES: la app los copia a la
-# carpeta persistente de datos (%ProgramData%\GymManager) solo la
-# primera vez que corre en esa PC (ver asegurar_archivos_iniciales()
-# en paths.py). Asi el instalador puede actualizar el codigo sin
-# pisar nunca los datos reales del usuario.
 DATA_CANDIDATES = [
     (PROJECT_ROOT / "migrations", "migrations"),
     (PROJECT_ROOT / "alembic.ini", "."),
     (PROJECT_ROOT / "assets", "assets"),
+]
+
+# Templates que necesitan RENOMBRARSE al empaquetar (.env -> .env.template,
+# gymmanager.db -> gymmanager_template.db). --add-data NO permite renombrar
+# un archivo (el "destino" siempre se trata como una carpeta contenedora,
+# no como un nombre de archivo), asi que primero los copiamos con el
+# nombre final a una carpeta de staging, y ESA copia es la que se agrega
+# con --add-data usando "." como destino (raiz del bundle).
+#
+# La app los copia a la carpeta persistente de datos
+# (%ProgramData%\GymManager) solo la primera vez que corre en esa PC
+# (ver asegurar_archivos_iniciales() en paths.py), asi el instalador
+# puede actualizar el codigo sin pisar nunca los datos reales del usuario.
+TEMPLATE_CANDIDATES = [
     (PROJECT_ROOT / ".env", ".env.template"),
     (PROJECT_ROOT / "gymmanager.db", "gymmanager_template.db"),
 ]
+
+STAGING_DIR = PROJECT_ROOT / ".build_staging"
 
 # Modulos que PyInstaller no detecta por analisis estatico porque se
 # cargan dinamicamente (ej: migrations/env.py es ejecutado por Alembic,
@@ -64,6 +74,31 @@ def limpiar_builds_anteriores() -> None:
         SPEC_FILE.unlink()
 
 
+def preparar_staging() -> list[tuple[Path, str]]:
+    """
+    Copia los TEMPLATE_CANDIDATES a STAGING_DIR con su nombre final
+    (.env -> .env.template, etc). Devuelve la lista de (origen_staging, ".")
+    lista para pasarle a --add-data, ya que el nombre final ya quedo
+    resuelto en el propio archivo de staging.
+    """
+    if STAGING_DIR.exists():
+        shutil.rmtree(STAGING_DIR)
+    STAGING_DIR.mkdir(parents=True, exist_ok=True)
+
+    resultado = []
+    for origen, nombre_final in TEMPLATE_CANDIDATES:
+        if not origen.exists():
+            print(f"(omitido, no existe: {origen})")
+            continue
+
+        destino_staging = STAGING_DIR / nombre_final
+        shutil.copy2(origen, destino_staging)
+        print(f"Preparando template: {origen} -> {destino_staging.name}")
+        resultado.append((destino_staging, "."))
+
+    return resultado
+
+
 def construir_comando() -> list[str]:
     """Arma el comando de PyInstaller segun lo que exista en el proyecto."""
     if not ENTRY_POINT.exists():
@@ -78,7 +113,7 @@ def construir_comando() -> list[str]:
         "--name",
         APP_NAME,
         "--onedir",
-        "--windowed", # No abre la terminal al ejecutar la app, solo la ventana principal
+        "--windowed",
         "--noconfirm",
         "--clean",
         "--contents-directory",
@@ -96,7 +131,9 @@ def construir_comando() -> list[str]:
     # --add-data usa ';' como separador en Windows y ':' en Linux/Mac
     separador = ";" if os.name == "nt" else ":"
 
-    for origen, destino in DATA_CANDIDATES:
+    todos_los_datos = list(DATA_CANDIDATES) + preparar_staging()
+
+    for origen, destino in todos_los_datos:
         if origen.exists():
             cmd.extend(["--add-data", f"{origen}{separador}{destino}"])
             print(f"Incluyendo datos: {origen} -> {destino}")
@@ -126,10 +163,14 @@ def main() -> None:
         sys.exit(resultado.returncode)
 
     salida = DIST_DIR / APP_NAME
+
+    if STAGING_DIR.exists():
+        shutil.rmtree(STAGING_DIR)
+
     print("-" * 60)
     print(f"Build completo. Salida en: {salida}")
     print(f"Ejecutable: {salida / (APP_NAME + '.exe')}")
-    print("Siguiente paso: correr el instalador de Inno Setup (installer/Gennes gimnasio.iss) sobre esta carpeta.")
+    print("Siguiente paso: correr el instalador de Inno Setup (installer/gym-manager.iss) sobre esta carpeta.")
 
 
 if __name__ == "__main__":

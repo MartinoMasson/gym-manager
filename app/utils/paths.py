@@ -51,7 +51,7 @@ def asegurar_archivos_iniciales() -> None:
 
     env_dest = os.path.join(data_dir, ".env")
     if not os.path.exists(env_dest):
-        env_template = get_resource_path(".env")
+        env_template = get_resource_path(".env.template")
         if os.path.exists(env_template):
             shutil.copy2(env_template, env_dest)
 
