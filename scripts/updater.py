@@ -102,14 +102,17 @@ def _descargar(url: str, destino: str):
             f.write(chunk)
 
 
-def aplicar_actualizacion(url: str):
+def aplicar_actualizacion(url: str) -> bool:
     """
-    Descarga el instalador nuevo y lo corre en modo silencioso.
-    El instalador (Inno Setup) se encarga de:
-      - cerrar/reemplazar los archivos de Program Files
-      - relanzar la app al terminar (ver [Run] en gym-manager.iss)
-    Esta función, si todo sale bien, NO retorna: cierra el proceso actual
-    para que el instalador pueda reemplazar los archivos en uso.
+    Descarga el instalador nuevo y lo lanza en modo silencioso.
+    El instalador (Inno Setup) se encarga de reemplazar los archivos
+    en Program Files y relanzar la app al terminar.
+
+    IMPORTANTE: esta función NO llama a sys.exit ni toca la GUI.
+    Devuelve True si el instalador se lanzó correctamente, en cuyo
+    caso el LLAMADOR (en el hilo principal de Qt) debe cerrar la
+    QApplication para liberar los archivos que el instalador necesita
+    reemplazar.
     """
     if not getattr(sys, "frozen", False):
         logger.warning("[UPDATER] Corriendo desde código fuente, no se puede auto-actualizar")
@@ -122,10 +125,6 @@ def aplicar_actualizacion(url: str):
     _descargar(url, instalador_path)
 
     print("[UPDATER] Ejecutando instalador (modo silencioso)...")
-    # /VERYSILENT: sin pantallas. /SUPPRESSMSGBOXES: sin popups de error.
-    # /NORESTART: no reiniciar Windows. El instalador relanza la app solo
-    # (ver seccion [Run] con postinstall en el .iss), asi que no hace
-    # falta relanzarla manualmente aca.
     subprocess.Popen(
         [
             instalador_path,
@@ -134,9 +133,7 @@ def aplicar_actualizacion(url: str):
             "/NORESTART",
         ]
     )
-
-    print("[UPDATER] Cerrando para permitir la actualización...")
-    sys.exit(0)
+    return True
 
 
 def alembic_upgrade():
@@ -158,33 +155,55 @@ def alembic_upgrade():
         return False
 
 
-def verificar_actualizacion(preguntar=True):
-    """Punto de entrada principal. Llamar antes de iniciar la UI."""
-    print("[UPDATER] Verificando actualizaciones...")
+def revisar_actualizacion_en_segundo_plano():
+    """
+    Segura para llamar desde un hilo de FONDO (sin GUI): solo hace la
+    consulta de red a GitHub. NO muestra diálogos ni lanza el
+    instalador (eso requiere el hilo principal de Qt).
 
+    Si NO hay actualización, aplica las migraciones locales acá mismo
+    (no necesita GUI) y devuelve (False, None, None).
+    Si SÍ hay actualización, devuelve (True, tag, url) para que el
+    hilo principal decida qué hacer.
+    """
+    print("[UPDATER] Verificando actualizaciones...")
     hay_update, tag, url = hay_actualizacion()
 
     if not hay_update:
         print(f"[UPDATER] La app está al día ✓ v{__version__}")
         alembic_upgrade()
-        return
+        return False, None, None
 
     print(f"[UPDATER] Nueva versión disponible: {tag}")
+    return True, tag, url
 
-    if preguntar:
-        try:
-            from PyQt6.QtWidgets import QMessageBox
-            resp = QMessageBox.question(
-                None,
-                "Actualización disponible",
-                f"Hay una nueva versión de GymManager ({tag}).\n¿Desea actualizar ahora?\n"
-                "Windows puede pedir permisos de administrador.",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            if resp != QMessageBox.StandardButton.Yes:
-                alembic_upgrade()
-                return
-        except Exception:
-            logger.exception("[UPDATER] No se pudo mostrar diálogo")
 
-    aplicar_actualizacion(url)
+def confirmar_y_actualizar_en_hilo_principal(tag: str, url: str) -> bool:
+    """
+    Debe llamarse DESDE EL HILO PRINCIPAL de Qt (nunca desde un
+    QThread de fondo). Muestra el diálogo de confirmación y, si el
+    usuario acepta, descarga y lanza el instalador.
+
+    Devuelve True si hay que cerrar la QApplication ahora mismo
+    (porque el instalador ya se está ejecutando y necesita que se
+    liberen los archivos). Devuelve False si hay que seguir
+    normalmente (el usuario dijo que no, o algo falló).
+    """
+    try:
+        from PyQt6.QtWidgets import QMessageBox
+        resp = QMessageBox.question(
+            None,
+            "Actualización disponible",
+            f"Hay una nueva versión de GymManager ({tag}).\n¿Desea actualizar ahora?\n"
+            "Windows puede pedir permisos de administrador.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if resp != QMessageBox.StandardButton.Yes:
+            alembic_upgrade()
+            return False
+    except Exception:
+        logger.exception("[UPDATER] No se pudo mostrar diálogo")
+        alembic_upgrade()
+        return False
+
+    return aplicar_actualizacion(url)

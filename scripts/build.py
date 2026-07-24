@@ -113,7 +113,7 @@ def construir_comando() -> list[str]:
         "--name",
         APP_NAME,
         "--onedir",
-        "--windowed",
+        # "--windowed",
         "--noconfirm",
         "--clean",
         "--contents-directory",

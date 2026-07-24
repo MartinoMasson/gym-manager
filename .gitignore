@@ -17,6 +17,11 @@ dist/
 build/
 *.egg-info/
 *.spec
+.build_staging/          
+
+# ── INSTALADOR (Inno Setup) ─────────────────────
+installer/output/        
+*.exe                    
 
 # ── BASES DE DATOS ──────────────────────────────
 *.db
@@ -25,6 +30,10 @@ build/
 # ── ALEMBIC ─────────────────────────────────────
 # Las migraciones SÍ van al repo.
 alembic.ini.local
+
+# ── LOGS ─────────────────────────────────────────
+*.log                      # <-- NUEVO, si tu logger escribe a archivo
+logs/
 
 # ── IDE / OS ────────────────────────────────────
 .idea/
